@@ -417,9 +417,20 @@ struct BlockBasedTableBuilder::Rep {
     if (skip_filters) {
       filter_builder = nullptr;
     } else {
+			/*[CYDBG]*/
+			uint64_t prev_micros_Rep = _ioptions.env->NowMicros();
+			uint64_t prev_cpu_micros_Rep = _ioptions.env->NowCPUNanos() / 1000;
+			/*[CYDBG]*/
       filter_builder.reset(CreateFilterBlockBuilder(
           _ioptions, _moptions, table_options,
           use_delta_encoding_for_index_values, p_index_builder_));
+			/*[CYDBG]*/
+			uint64_t micros_Rep = _ioptions.env->NowMicros() - prev_micros_Rep;
+			uint64_t cpu_micros_Rep = _ioptions.env->NowCPUNanos() / 1000 - prev_cpu_micros_Rep;
+			/*ROCKS_LOG_INFO(_ioptions.info_log, "[CYDBG] micros_Rep: %lu , cpu_micros_Rep: %lu", micros_Rep, cpu_micros_Rep);*/
+			props.filter_time_Micros_Rep = micros_Rep;
+			props.filter_cpu_time_Micros_Rep = cpu_micros_Rep;
+			/*[CYDBG]*/
     }
 
     for (auto& collector_factories : *int_tbl_prop_collector_factories) {
@@ -527,7 +538,18 @@ void BlockBasedTableBuilder::Add(const Slice& key, const Slice& value) {
     // Note: PartitionedFilterBlockBuilder requires key being added to filter
     // builder after being added to index builder.
     if (r->state == Rep::State::kUnbuffered && r->filter_builder != nullptr) {
+			/*[CYDBG]*/
+			uint64_t prev_micros_Add = r->ioptions.env->NowMicros();
+			uint64_t prev_cpu_micros_Add = r->ioptions.env->NowCPUNanos() / 1000;
+			/*[CYDBG]*/
       r->filter_builder->Add(ExtractUserKey(key));
+			/*[CYDBG]*/
+			uint64_t micros_Add = r->ioptions.env->NowMicros() - prev_micros_Add;
+			uint64_t cpu_micros_Add = r->ioptions.env->NowCPUNanos() / 1000 - prev_cpu_micros_Add;
+			r->props.filter_time_Micros_Add += micros_Add;
+			r->props.filter_cpu_time_Micros_Add += cpu_micros_Add;
+			/*ROCKS_LOG_INFO(r->ioptions.info_log, "[CYDBG] micros_Add: %lu , cpu_micros_Add: %lu", micros_Add, cpu_micros_Add);*/
+			/*[CYDBG]*/
     }
 
     r->last_key.assign(key.data(), key.size());
@@ -1133,7 +1155,18 @@ Status BlockBasedTableBuilder::Finish() {
   //    7. Footer
   BlockHandle metaindex_block_handle, index_block_handle;
   MetaIndexBuilder meta_index_builder;
+	/*[CYDBG]*/
+  uint64_t prev_micros_Finish = r->ioptions.env->NowMicros();
+	uint64_t prev_cpu_micros_Finish = r->ioptions.env->NowCPUNanos() / 1000;
+  /*[CYDBG]*/
   WriteFilterBlock(&meta_index_builder);
+	/*[CYDBG]*/
+	uint64_t micros_Finish = r->ioptions.env->NowMicros() - prev_micros_Finish;
+	uint64_t cpu_micros_Finish = r->ioptions.env->NowCPUNanos() / 1000 - prev_cpu_micros_Finish;
+/*	ROCKS_LOG_INFO(r->ioptions.info_log, "[CYDBG] micros_Finish: %lu , cpu_micros_Finish: %lu", micros_Finish, cpu_micros_Finish);*/
+  r->props.filter_time_Micros_Finish = micros_Finish;
+	r->props.filter_cpu_time_Micros_Finish = cpu_micros_Finish;
+	/*[CYDBG]*/
   WriteIndexBlock(&meta_index_builder, &index_block_handle);
   WriteCompressionDictBlock(&meta_index_builder);
   WriteRangeDelBlock(&meta_index_builder);

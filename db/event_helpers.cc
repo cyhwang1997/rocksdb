@@ -98,7 +98,13 @@ void EventHelpers::LogAndNotifyTableFileCreationFinished(
                             table_properties.num_entries)
               << "num_data_blocks" << table_properties.num_data_blocks
               << "num_entries" << table_properties.num_entries
-              << "filter_policy_name" << table_properties.filter_policy_name;
+              << "filter_policy_name" << table_properties.filter_policy_name
+		/*[CYDBG]*/<< "[CYDBG] filter_time_Micros_Rep" << table_properties.filter_time_Micros_Rep
+		<< "[CYDBG] filter_cpu_time_Micros_Rep" << table_properties.filter_cpu_time_Micros_Rep
+		<< "[CYDBG] filter_time_Micros_Add" << table_properties.filter_time_Micros_Add
+		<< "[CYDBG] filter_cpu_time_Micros_Add" << table_properties.filter_cpu_time_Micros_Add
+		<< "[CYDBG] filter_time_Micros_Finish" << table_properties.filter_time_Micros_Finish
+		<< "[CYDBG] filter_cpu_time_Micros_Finish" << table_properties.filter_cpu_time_Micros_Finish/*[CYDBG]*/;
 
       // user collected properties
       for (const auto& prop : table_properties.readable_properties) {

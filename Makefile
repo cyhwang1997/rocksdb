@@ -1616,7 +1616,6 @@ install: install-static
 # ---------------------------------------------------------------------------
 # Jni stuff
 # ---------------------------------------------------------------------------
-
 JAVA_INCLUDE = -I$(JAVA_HOME)/include/ -I$(JAVA_HOME)/include/linux
 ifeq ($(PLATFORM), OS_SOLARIS)
 	ARCH := $(shell isainfo -b)
