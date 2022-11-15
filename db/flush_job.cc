@@ -422,6 +422,10 @@ Status FlushJob::WriteLevel0Table() {
   cfd_->internal_stats()->AddCompactionStats(0 /* level */, thread_pri_, stats);
   cfd_->internal_stats()->AddCFStats(InternalStats::BYTES_FLUSHED,
                                      meta_.fd.GetFileSize());
+
+	ROCKS_LOG_INFO(db_options_.info_log,
+								"[CYDBG] [JOB %d] stats.micros: %lu, stats.cpu_micros: %lu", job_context_->job_id, stats.micros, stats.cpu_micros);
+
   RecordFlushIOStats();
   return s;
 }
