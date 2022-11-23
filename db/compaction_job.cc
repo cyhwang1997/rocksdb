@@ -782,17 +782,17 @@ Status CompactionJob::Install(const MutableCFOptions& mutable_cf_options) {
          << compact_->sub_compact_states.size() << "output_compression"
          << CompressionTypeToString(compact_->compaction->output_compression());
 
-  if (compaction_job_stats_ != nullptr) {
-    stream << "num_single_delete_mismatches"
-           << compaction_job_stats_->num_single_del_mismatch;
-    stream << "num_single_delete_fallthrough"
-           << compaction_job_stats_->num_single_del_fallthru;
-  }
+//  if (compaction_job_stats_ != nullptr) {
+//    stream << "num_single_delete_mismatches"
+//           << compaction_job_stats_->num_single_del_mismatch;
+//    stream << "num_single_delete_fallthrough"
+//           << compaction_job_stats_->num_single_del_fallthru;
+//  }
 
   if (measure_io_stats_ && compaction_job_stats_ != nullptr) {
     stream << "file_write_nanos" << compaction_job_stats_->file_write_nanos;
-    stream << "file_range_sync_nanos"
-           << compaction_job_stats_->file_range_sync_nanos;
+//    stream << "file_range_sync_nanos"
+//           << compaction_job_stats_->file_range_sync_nanos;
     stream << "file_fsync_nanos" << compaction_job_stats_->file_fsync_nanos;
     stream << "file_prepare_write_nanos"
            << compaction_job_stats_->file_prepare_write_nanos;

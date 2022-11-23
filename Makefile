@@ -16,6 +16,7 @@ LDFLAGS += $(EXTRA_LDFLAGS)
 MACHINE ?= $(shell uname -m)
 ARFLAGS = ${EXTRA_ARFLAGS} rs
 STRIPFLAGS = -S -x
+JAVA_HOME = /usr/lib/jvm/java-8-openjdk-amd64/
 
 # Transform parallel LOG output into something more readable.
 perl_command = perl -n \
