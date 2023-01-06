@@ -131,6 +131,7 @@ LIB_SOURCES =                                                   \
   util/arena.cc                                                 \
   util/auto_roll_logger.cc                                      \
   util/bloom.cc                                                 \
+  util/cvqf.cc                                                  \
   util/build_version.cc                                         \
   util/coding.cc                                                \
   util/compaction_job_stats_impl.cc                             \
@@ -366,6 +367,7 @@ MAIN_SOURCES =                                                          \
   util/auto_roll_logger_test.cc                                         \
   util/autovector_test.cc                                               \
   util/bloom_test.cc                                                    \
+  util/cvqf_test.cc                                                     \
   util/coding_test.cc                                                   \
   util/crc32c_test.cc                                                   \
   util/dynamic_bloom_test.cc                                            \

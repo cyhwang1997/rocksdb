@@ -598,6 +598,7 @@ set(SOURCES
         util/arena.cc
         util/auto_roll_logger.cc
         util/bloom.cc
+        util/cvqf.cc
         util/coding.cc
         util/compaction_job_stats_impl.cc
         util/comparator.cc
@@ -944,6 +945,7 @@ if(WITH_TESTS)
         util/auto_roll_logger_test.cc
         util/autovector_test.cc
         util/bloom_test.cc
+        util/cvqf_test.cc
         util/coding_test.cc
         util/crc32c_test.cc
         util/delete_scheduler_test.cc

@@ -414,6 +414,7 @@ TESTS = \
 	auto_roll_logger_test \
 	bloom_test \
 	dynamic_bloom_test \
+  cvqf_test \
 	c_test \
 	checkpoint_test \
 	crc32c_test \
@@ -1132,6 +1133,9 @@ bloom_test: util/bloom_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
 dynamic_bloom_test: util/dynamic_bloom_test.o $(LIBOBJECTS) $(TESTHARNESS)
+	$(AM_LINK)
+
+cvqf_test: util/cvqf_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
 c_test: db/c_test.o $(LIBOBJECTS) $(TESTHARNESS)
