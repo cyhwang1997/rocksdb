@@ -16,6 +16,8 @@
 #include "util/coding.h"
 #include "util/hash.h"
 
+#include <immintrin.h>
+
 namespace rocksdb {
 
 class BlockBasedFilterBlockBuilder;
@@ -279,6 +281,13 @@ class CVQFPolicy : public FilterPolicy {
   const char* Name() const override { return "rocksdb.BuiltinCVQF"; }
 
   void CreateFilter(const Slice* keys, int n, std::string* dst) const override {
+    __m256i int_vector = _mm256_set1_epi8(1);
+    int *ptr = (int*) &int_vector;
+    printf("[CYDBG] %d\n", ptr[0]);
+    int_vector = _mm256_set1_epi8(0);
+    ptr = (int*) &int_vector;
+    printf("[CYDBG] %d\n", ptr[0]);
+    // Compute bloom filter size (in both bits and bytes)
     // Compute bloom filter size (in both bits and bytes)
     size_t bits = n * bits_per_key_;
 
