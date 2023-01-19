@@ -25,11 +25,11 @@ class FullFilterBlockBuilder;
 
 CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
                                  const size_t num_probes, const uint64_t nslots)
-    : bits_per_key_(bits_per_key), num_probes_(num_probes), nslots_(nslots){
+    : bits_per_key_(bits_per_key), num_probes_(num_probes), nslots_(1ULL << nslots){
 //  assert(bits_per_key_);
   assert(nslots_);
 
-  total_blocks = (nslots + 48)/48;
+  total_blocks = (nslots_ + 48)/48;
   total_size_in_bytes = sizeof(vqf_block) * total_blocks;
 
   filter = (vqf_filter *)malloc(sizeof(*filter) + total_size_in_bytes);
@@ -38,7 +38,7 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
   filter->metadata.total_size_in_bytes = total_size_in_bytes;
   filter->metadata.nslots = total_blocks * 48;
   filter->metadata.key_remainder_bits = 8;
-  filter->metadata.range = total_blocks * 48 * (1ULL << filter->metadata.key_remainder_bits);
+  filter->metadata.range = total_blocks * 80 * (1ULL << filter->metadata.key_remainder_bits);
   filter->metadata.nblocks = total_blocks;
 
   for (uint64_t  i = 0; i < total_blocks; i++) {
@@ -46,9 +46,6 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
     filter->blocks[i].md[1] = UINT64_MAX;
     filter->blocks[i].md[1] = filter->blocks[i].md[1] & ~(1ULL << 63);
   }
-
-  PrintFilter();
-
   }
 
   CVQFBitsBuilder::~CVQFBitsBuilder() {}
@@ -93,7 +90,7 @@ void CVQFBitsBuilder::PrintFilter() {
           filter->metadata.range, filter->metadata.nblocks, filter->metadata.nslots);
 
   //print block, md
-  for (uint64_t  i = 0; i < total_blocks; i++) {
+  for (uint64_t  i = 0; i < 10; i++) {//total_blocks; i++) {
     printf("vqf_block: \n \
             blocks[%lu].md[0]: %lx\n \
             blocks[%lu].md[1]: %lx\n", i, filter->blocks[i].md[0], i, filter->blocks[i].md[1]);
@@ -101,7 +98,7 @@ void CVQFBitsBuilder::PrintFilter() {
 
   //print bock, tag
   printf("vqf_block: \n"); 
-  for (uint64_t  i = 0; i < total_blocks; i++) {
+  for (uint64_t  i = 0; i < 10; i++) {//total_blocks; i++) {
     for (uint64_t j = 0; j < 48; j++) {
       printf("            blocks[%lu].tags[%lu]: %u\n", i, j, filter->blocks[i].tags[j]);
     }

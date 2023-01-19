@@ -243,6 +243,9 @@ TEST_F(FullCVQFTest, Init) {
 TEST_F(FullCVQFTest, FilterSize) {
   uint32_t dont_care1, dont_care2;
   auto full_bits_builder = GetFullFilterBitsBuilder();
+  /*CYDBG*/
+  full_bits_builder->PrintFilter();
+  /*CYDBG*/
   for (int n = 1; n < 100; n++) {
     auto space = full_bits_builder->CalculateSpace(n, &dont_care1, &dont_care2);
     auto n2 = full_bits_builder->CalculateNumEntry(space);
