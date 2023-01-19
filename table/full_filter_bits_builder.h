@@ -16,6 +16,25 @@
 
 namespace rocksdb {
 
+typedef struct __attribute__ ((__packed__)) vqf_block {
+  uint64_t md[2];
+  uint8_t tags[48];
+} vqf_block;
+
+typedef struct vqf_metadata {
+  uint64_t total_size_in_bytes;
+  uint64_t key_remainder_bits;
+  uint64_t range;
+  uint64_t nblocks;
+  uint64_t nslots;
+} vqf_metadata;
+
+typedef struct vqf_filter {
+  vqf_metadata metadata;
+  vqf_block blocks[];
+} vqf_filter;
+
+
 class Slice;
 
 class FullFilterBitsBuilder : public FilterBitsBuilder {
@@ -71,4 +90,41 @@ class FullFilterBitsBuilder : public FilterBitsBuilder {
   void operator=(const FullFilterBitsBuilder&);
 };
 
+/*CVQF*/
+class CVQFBitsBuilder : public FilterBitsBuilder {
+ public:
+  explicit CVQFBitsBuilder(const size_t bits_per_key,
+                           const size_t num_probes, const uint64_t nslots);
+
+  ~CVQFBitsBuilder();
+
+  virtual void AddKey(const Slice& key) override;
+
+  virtual Slice Finish(std::unique_ptr<const char[]>* buf) override;
+  virtual int CalculateNumEntry(const uint32_t space) override;
+  uint32_t CalculateSpace(const int num_entry, uint32_t* total_bits,
+                          uint32_t* num_lines);
+  vqf_filter *filter;
+
+ private:
+  /*Need to be removed*/
+  size_t bits_per_key_;
+  size_t num_probes_;
+  std::vector<uint32_t> hash_entries_;
+  uint32_t GetTotalBitsForLocality(uint32_t total_bits);
+  char* ReserveSpace(const int num_entry, uint32_t* total_bits,
+                     uint32_t* num_lines);
+  void AddHash(uint32_t h, char* data, uint32_t num_lines, uint32_t total_bits);
+
+  CVQFBitsBuilder(const CVQFBitsBuilder&);
+  void operator=(const CVQFBitsBuilder&);
+  /*Need to be removed*/
+
+  uint64_t total_blocks;
+  uint64_t total_size_in_bytes;
+  uint64_t nslots_;
+  //vqf_filter *filter;
+};
+
+/*CVQF*/
 }  // namespace rocksdb

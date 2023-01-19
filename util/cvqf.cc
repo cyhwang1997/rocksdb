@@ -23,22 +23,42 @@ namespace rocksdb {
 class BlockBasedFilterBlockBuilder;
 class FullFilterBlockBuilder;
 
-/*FullFilterBitsBuilder::FullFilterBitsBuilder(const size_t bits_per_key,
-                                             const size_t num_probes)
-    : bits_per_key_(bits_per_key), num_probes_(num_probes) {
-  assert(bits_per_key_);
+CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
+                                 const size_t num_probes, const uint64_t nslots)
+    : bits_per_key_(bits_per_key), num_probes_(num_probes), nslots_(nslots){
+//  assert(bits_per_key_);
+  assert(nslots_);
+
+  total_blocks = (nslots + 48)/48;
+  total_size_in_bytes = sizeof(vqf_block) * total_blocks;
+
+  filter = (vqf_filter *)malloc(sizeof(*filter) + total_size_in_bytes);
+  assert(filter);
+
+  filter->metadata.total_size_in_bytes = total_size_in_bytes;
+  filter->metadata.nslots = total_blocks * 48;
+  filter->metadata.key_remainder_bits = 8;
+  filter->metadata.range = total_blocks * 48 * (1ULL << filter->metadata.key_remainder_bits);
+  filter->metadata.nblocks = total_blocks;
+
+  for (uint64_t  i = 0; i < total_blocks; i++) {
+    filter->blocks[i].md[0] = UINT64_MAX;
+    filter->blocks[i].md[1] = UINT64_MAX;
+    filter->blocks[i].md[1] = filter->blocks[i].md[1] & ~(1ULL << 63);
   }
 
-  FullFilterBitsBuilder::~FullFilterBitsBuilder() {}
+  }
 
-  void FullFilterBitsBuilder::AddKey(const Slice& key) {
+  CVQFBitsBuilder::~CVQFBitsBuilder() {}
+
+  void CVQFBitsBuilder::AddKey(const Slice& key) {
     uint32_t hash = BloomHash(key);
     if (hash_entries_.size() == 0 || hash != hash_entries_.back()) {
       hash_entries_.push_back(hash);
     }
   }
 
-  Slice FullFilterBitsBuilder::Finish(std::unique_ptr<const char[]>* buf) {
+  Slice CVQFBitsBuilder::Finish(std::unique_ptr<const char[]>* buf) {
     uint32_t total_bits, num_lines;
     char* data = ReserveSpace(static_cast<int>(hash_entries_.size()),
                               &total_bits, &num_lines);
@@ -59,7 +79,7 @@ class FullFilterBlockBuilder;
     return Slice(data, total_bits / 8 + 5);
   }
 
-uint32_t FullFilterBitsBuilder::GetTotalBitsForLocality(uint32_t total_bits) {
+uint32_t CVQFBitsBuilder::GetTotalBitsForLocality(uint32_t total_bits) {
   uint32_t num_lines =
       (total_bits + CACHE_LINE_SIZE * 8 - 1) / (CACHE_LINE_SIZE * 8);
 
@@ -71,7 +91,7 @@ uint32_t FullFilterBitsBuilder::GetTotalBitsForLocality(uint32_t total_bits) {
   return num_lines * (CACHE_LINE_SIZE * 8);
 }
 
-uint32_t FullFilterBitsBuilder::CalculateSpace(const int num_entry,
+uint32_t CVQFBitsBuilder::CalculateSpace(const int num_entry,
                                                uint32_t* total_bits,
                                                uint32_t* num_lines) {
   assert(bits_per_key_);
@@ -93,7 +113,7 @@ uint32_t FullFilterBitsBuilder::CalculateSpace(const int num_entry,
   return sz;
 }
 
-char* FullFilterBitsBuilder::ReserveSpace(const int num_entry,
+char* CVQFBitsBuilder::ReserveSpace(const int num_entry,
                                           uint32_t* total_bits,
                                           uint32_t* num_lines) {
   uint32_t sz = CalculateSpace(num_entry, total_bits, num_lines);
@@ -102,7 +122,7 @@ char* FullFilterBitsBuilder::ReserveSpace(const int num_entry,
   return data;
 }
 
-int FullFilterBitsBuilder::CalculateNumEntry(const uint32_t space) {
+int CVQFBitsBuilder::CalculateNumEntry(const uint32_t space) {
   assert(bits_per_key_);
   assert(space > 0);
   uint32_t dont_care1, dont_care2;
@@ -119,7 +139,7 @@ int FullFilterBitsBuilder::CalculateNumEntry(const uint32_t space) {
   return n;
 }
 
-inline void FullFilterBitsBuilder::AddHash(uint32_t h, char* data,
+inline void CVQFBitsBuilder::AddHash(uint32_t h, char* data,
     uint32_t num_lines, uint32_t total_bits) {
 #ifdef NDEBUG
   (void)total_bits;
@@ -137,12 +157,13 @@ inline void FullFilterBitsBuilder::AddHash(uint32_t h, char* data,
 
     h += delta;
   }
-}*/
+}
+
 
 namespace {
-class FullFilterBitsReader : public FilterBitsReader {
+class CVQFBitsReader : public FilterBitsReader {
  public:
-  explicit FullFilterBitsReader(const Slice& contents)
+  explicit CVQFBitsReader(const Slice& contents)
       : data_(const_cast<char*>(contents.data())),
         data_len_(static_cast<uint32_t>(contents.size())),
         num_probes_(0),
@@ -174,7 +195,7 @@ class FullFilterBitsReader : public FilterBitsReader {
     }
   }
 
-  ~FullFilterBitsReader() override {}
+  ~CVQFBitsReader() override {}
 
   bool MayMatch(const Slice& entry) override {
     if (data_len_ <= 5) {   // remain same with original filter
@@ -216,11 +237,11 @@ class FullFilterBitsReader : public FilterBitsReader {
       const size_t& num_probes, const uint32_t& num_lines);
 
   // No Copy allowed
-  FullFilterBitsReader(const FullFilterBitsReader&);
-  void operator=(const FullFilterBitsReader&);
+  CVQFBitsReader(const CVQFBitsReader&);
+  void operator=(const CVQFBitsReader&);
 };
 
-void FullFilterBitsReader::GetFilterMeta(const Slice& filter,
+void CVQFBitsReader::GetFilterMeta(const Slice& filter,
     size_t* num_probes, uint32_t* num_lines) {
   uint32_t len = static_cast<uint32_t>(filter.size());
   if (len <= 5) {
@@ -234,7 +255,7 @@ void FullFilterBitsReader::GetFilterMeta(const Slice& filter,
   *num_lines = DecodeFixed32(filter.data() + len - 4);
 }
 
-bool FullFilterBitsReader::HashMayMatch(const uint32_t& hash,
+bool CVQFBitsReader::HashMayMatch(const uint32_t& hash,
     const Slice& filter, const size_t& num_probes,
     const uint32_t& num_lines) {
   uint32_t len = static_cast<uint32_t>(filter.size());
@@ -270,9 +291,9 @@ bool FullFilterBitsReader::HashMayMatch(const uint32_t& hash,
 // An implementation of filter policy
 class CVQFPolicy : public FilterPolicy {
  public:
-  explicit CVQFPolicy(int bits_per_key, bool use_block_based_builder)
+  explicit CVQFPolicy(int bits_per_key, bool use_block_based_builder, uint64_t nslots)
       : bits_per_key_(bits_per_key), hash_func_(BloomHash),
-        use_block_based_builder_(use_block_based_builder) {
+        use_block_based_builder_(use_block_based_builder), nslots_(nslots) {
     initialize();
   }
 
@@ -281,13 +302,6 @@ class CVQFPolicy : public FilterPolicy {
   const char* Name() const override { return "rocksdb.BuiltinCVQF"; }
 
   void CreateFilter(const Slice* keys, int n, std::string* dst) const override {
-    __m256i int_vector = _mm256_set1_epi8(1);
-    int *ptr = (int*) &int_vector;
-    printf("[CYDBG] %d\n", ptr[0]);
-    int_vector = _mm256_set1_epi8(0);
-    ptr = (int*) &int_vector;
-    printf("[CYDBG] %d\n", ptr[0]);
-    // Compute bloom filter size (in both bits and bytes)
     // Compute bloom filter size (in both bits and bytes)
     size_t bits = n * bits_per_key_;
 
@@ -346,11 +360,11 @@ class CVQFPolicy : public FilterPolicy {
       return nullptr;
     }
 
-    return new FullFilterBitsBuilder(bits_per_key_, num_probes_);
+    return new CVQFBitsBuilder(bits_per_key_, num_probes_, nslots_); 
   }
 
   FilterBitsReader* GetFilterBitsReader(const Slice& contents) const override {
-    return new FullFilterBitsReader(contents);
+    return new CVQFBitsReader(contents);
   }
 
   // If choose to use block based builder
@@ -362,6 +376,7 @@ class CVQFPolicy : public FilterPolicy {
   uint32_t (*hash_func_)(const Slice& key);
 
   const bool use_block_based_builder_;
+  uint64_t nslots_;
 
   void initialize() {
     // We intentionally round down to reduce probing cost a little bit
@@ -374,8 +389,8 @@ class CVQFPolicy : public FilterPolicy {
 }  // namespace
 
 const FilterPolicy* NewCVQFPolicy(int bits_per_key,
-                                         bool use_block_based_builder) {
-  return new CVQFPolicy(bits_per_key, use_block_based_builder);
+                                  bool use_block_based_builder, uint64_t nslots) {
+  return new CVQFPolicy(bits_per_key, use_block_based_builder, nslots);
 }
 
 }  // namespace rocksdb

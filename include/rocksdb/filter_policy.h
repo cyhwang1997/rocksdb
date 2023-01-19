@@ -147,5 +147,5 @@ extern const FilterPolicy* NewBloomFilterPolicy(
     int bits_per_key, bool use_block_based_builder = false);
 
 extern const FilterPolicy* NewCVQFPolicy(
-    int bits_per_key, bool use_block_based_builder = false);
+    int bits_per_key, bool use_block_based_builder = false, uint64_t nslots = 17);
 }  // namespace rocksdb

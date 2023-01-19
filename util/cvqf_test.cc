@@ -185,15 +185,15 @@ class FullCVQFTest : public testing::Test {
 
  public:
   FullCVQFTest() :
-      policy_(NewCVQFPolicy(FLAGS_bits_per_key, false)),
+      policy_(NewCVQFPolicy(FLAGS_bits_per_key, false, 17)),
       filter_size_(0) {
     Reset();
   }
 
   ~FullCVQFTest() override { delete policy_; }
 
-  FullFilterBitsBuilder* GetFullFilterBitsBuilder() {
-    return dynamic_cast<FullFilterBitsBuilder*>(bits_builder_.get());
+  CVQFBitsBuilder* GetFullFilterBitsBuilder() {
+    return dynamic_cast<CVQFBitsBuilder*>(bits_builder_.get());
   }
 
   void Reset() {
@@ -235,6 +235,10 @@ class FullCVQFTest : public testing::Test {
     return result / 10000.0;
   }
 };
+
+TEST_F(FullCVQFTest, Init) {
+}
+
 
 TEST_F(FullCVQFTest, FilterSize) {
   uint32_t dont_care1, dont_care2;
