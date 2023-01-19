@@ -279,7 +279,7 @@ TEST_F(FullCVQFTest, FullSmall) {
   ASSERT_TRUE(!Matches("foo"));
 }
 
-/*TEST_F(FullCVQFTest, FullVaryingLengths) {
+TEST_F(FullCVQFTest, FullVaryingLengths) {
   char buffer[sizeof(int)];
 
   // Count number of filters that significantly exceed the false positive rate
@@ -318,7 +318,7 @@ TEST_F(FullCVQFTest, FullSmall) {
             good_filters, mediocre_filters);
   }
   ASSERT_LE(mediocre_filters, good_filters/5);
-}*/
+}
 
 }  // namespace rocksdb
 

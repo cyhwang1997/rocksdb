@@ -228,7 +228,7 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
       target_index = slot_index;
       update_tags_512(&blocks[index], target_index, tag);
       update_md(block_md, select_index);
-      PrintBlock(index);
+//      PrintBlock(index);
       return;
     }
 
@@ -299,7 +299,7 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
         if (end_target_index == slot_index) {
           update_tags_512(&blocks[index], target_index, tag);
           update_md(block_md, select_index);
-          PrintBlock(index);
+//          PrintBlock(index);
           return;
         }
 
@@ -314,13 +314,13 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
               if (blocks[index].tags[end_target_index + 1 - QUQU_PRESLOT] == tag) {
                update_tags_512(&blocks[index], end_target_index, 1);
                update_md(block_md, select_index);
-               PrintBlock(index);
+//               PrintBlock(index);
                return;
               }
               else {
                 update_tags_512(&blocks[index], end_target_index, tag);
                 update_md(block_md, select_index);
-                PrintBlock(index);
+//                PrintBlock(index);
                 return;
               }
 	          }
@@ -328,7 +328,7 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
             else {
               update_tags_512(&blocks[index], target_index, tag);
               update_md(block_md, select_index);
-              PrintBlock(index);
+//              PrintBlock(index);
               return;
 	          }
           }
@@ -341,14 +341,14 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
               if (blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT] == QUQU_MAX) {
                 update_tags_512(&blocks[index], end_target_index, 1);
                 update_md(block_md, select_index);
-                PrintBlock(index);
+//                PrintBlock(index);
                 return;
               }
 
               // increment counter
               else {
                 blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT]++;
-                PrintBlock(index);
+//                PrintBlock(index);
                 return;
               }
             }
@@ -357,7 +357,7 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
               // wrong zero fetched
               update_tags_512(&blocks[index], target_index, tag);
               update_md(block_md, select_index);
-              PrintBlock(index);
+//              PrintBlock(index);
               return;
             }
           }
@@ -390,7 +390,7 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
               update_md(block_md, select_index);
               update_tags_512(&blocks[index], end_target_index + 1, 2);
               update_md(block_md, select_index);
-              PrintBlock(index);
+//              PrintBlock(index);
               return;
             }
           }
@@ -402,14 +402,14 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
             if (blocks[index].tags[end_target_index - 1  - QUQU_PRESLOT] == QUQU_MAX) {
               update_tags_512(&blocks[index], end_target_index, 2);
               update_md(block_md, select_index);
-              PrintBlock(index);
+//              PrintBlock(index);
               return;
             }
 
             // increment counter
             else {
               blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT]++;
-              PrintBlock(index);
+//              PrintBlock(index);
               return;
             }
           }
@@ -429,7 +429,7 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
           if (end_target_index == target_index + 1) {
             update_tags_512(&blocks[index], end_target_index, 1);
             update_md(block_md, select_index);
-            PrintBlock(index);
+//            PrintBlock(index);
             return;
           }
 
@@ -439,14 +439,14 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
             if (blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT] == QUQU_MAX - 1) {
               update_tags_512(&blocks[index], end_target_index, 1);
               update_md(block_md, select_index);
-              PrintBlock(index);
+//              PrintBlock(index);
               return;
             }
 
             // increment counter
             else {
               blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT]++;
-              PrintBlock(index);
+//              PrintBlock(index);
               return;
             }
           }
@@ -458,7 +458,7 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
           if (end_target_index == target_index + 1) {
             update_tags_512(&blocks[index], end_target_index, 1);
             update_md(block_md, select_index);
-            PrintBlock(index);
+//            PrintBlock(index);
             return;
           }
 
@@ -468,7 +468,7 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
             if (blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT] == QUQU_MAX) {
               update_tags_512(&blocks[index], end_target_index, 1);
               update_md(block_md, select_index);
-              PrintBlock(index);
+//              PrintBlock(index);
               return;
             }
 
@@ -483,19 +483,19 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
                   blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT] = temp_tag;
                   update_tags_512(&blocks[index], target_index + 1, 0);
                   update_md(block_md, select_index);
-                  PrintBlock(index);
+//                  PrintBlock(index);
                   return;
                 }
 
                 // no need to put 0
                 else {
                   blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT] = temp_tag;
-                  PrintBlock(index);
+//                  PrintBlock(index);
                   return;
                 }
               } else {
                 blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT] = temp_tag;
-                PrintBlock(index);
+//                PrintBlock(index);
                 return ;
               }
             }
@@ -505,7 +505,7 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
           else {
             update_tags_512(&blocks[index], target_index, tag);
             update_md(block_md, select_index);
-            PrintBlock(index);
+//            PrintBlock(index);
             return;
           }
         }
@@ -516,7 +516,7 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
       else {
         update_tags_512(&blocks[index], target_index, tag);
         update_md(block_md, select_index);
-        PrintBlock(index);
+//        PrintBlock(index);
         return;
       }
     }
@@ -525,7 +525,7 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
     else {
       update_tags_512(&blocks[index], target_index, tag); // slot_index
       update_md(block_md, select_index);
-      PrintBlock(index);
+//      PrintBlock(index);
       return;
     }
 
@@ -623,123 +623,123 @@ class CVQFBitsReader : public FilterBitsReader {
   ~CVQFBitsReader() override {}
 
   static inline bool check_tags(vqf_filter* filter, uint64_t tag, uint64_t block_index) {
-  uint64_t index = block_index / QUQU_BUCKETS_PER_BLOCK;
-  uint64_t offset = block_index % QUQU_BUCKETS_PER_BLOCK;
-  __m256i bcast = _mm256_set1_epi8(tag);
-  __m256i block = _mm256_loadu_si256(reinterpret_cast<__m256i*>(&filter->blocks[index]));
-  __m256i result1t = _mm256_cmpeq_epi8(bcast, block);
-  __mmask32 result1 = _mm256_movemask_epi8(result1t);
-  block = _mm256_loadu_si256(reinterpret_cast<__m256i*>((uint8_t*)&filter->blocks[index]+32));
-  __m256i result2t = _mm256_cmpeq_epi8(bcast, block);
-  __mmask32 result2 = _mm256_movemask_epi8(result2t);
-  uint64_t result = (uint64_t)result2 << 32 | (uint64_t)result1;
+    uint64_t index = block_index / QUQU_BUCKETS_PER_BLOCK;
+    uint64_t offset = block_index % QUQU_BUCKETS_PER_BLOCK;
+    __m256i bcast = _mm256_set1_epi8(tag);
+    __m256i block = _mm256_loadu_si256(reinterpret_cast<__m256i*>(&filter->blocks[index]));
+    __m256i result1t = _mm256_cmpeq_epi8(bcast, block);
+    __mmask32 result1 = _mm256_movemask_epi8(result1t);
+    block = _mm256_loadu_si256(reinterpret_cast<__m256i*>((uint8_t*)&filter->blocks[index]+32));
+    __m256i result2t = _mm256_cmpeq_epi8(bcast, block);
+    __mmask32 result2 = _mm256_movemask_epi8(result2t);
+    uint64_t result = (uint64_t)result2 << 32 | (uint64_t)result1;
 
-  if (result == 0) {
-    // no matching tags, can bail
-    return false;
-  }
-
-  uint64_t start = offset != 0 ? lookup_128(filter->blocks[index].md, offset - 1) : one[0] << 2 * sizeof(uint64_t); // 1 << 16
-  uint64_t end = lookup_128(filter->blocks[index].md, offset);
-  uint64_t mask = end - start;
-  vqf_block * blocks = filter->blocks;
-  uint64_t equalLocations = mask & result;
-  uint64_t slot_start = _tzcnt_u64(start);
-  uint64_t slot_end = _tzcnt_u64(end);
-  uint64_t slot_check;
-
-   // 255 should be last tag
-  if (tag == QUQU_MAX) {
-    if (((equalLocations >> (slot_end - 1)) & 1 ) == 1) {
-      return true;
-    }
-    else {
+    if (result == 0) {
+      // no matching tags, can bail
       return false;
     }
-  }
 
-  // 0 should be first tag
-  else if (tag == 0) {
-    if (((equalLocations >> slot_start) & 1 ) == 1) {
-      return true;
-    }
-    else {
-      return false;
-    }
-  }
+    uint64_t start = offset != 0 ? lookup_128(filter->blocks[index].md, offset - 1) : one[0] << 2 * sizeof(uint64_t); // 1 << 16
+    uint64_t end = lookup_128(filter->blocks[index].md, offset);
+    uint64_t mask = end - start;
+    vqf_block * blocks = filter->blocks;
+    uint64_t equalLocations = mask & result;
+    uint64_t slot_start = _tzcnt_u64(start);
+    uint64_t slot_end = _tzcnt_u64(end);
+    uint64_t slot_check;
 
-  // other tags
-  else {
-    // filter->blocks[index].tags[slot_check - 16];
-    while (equalLocations != 0) {
-      // only check necessaries
-      slot_check = _tzcnt_u64(equalLocations);
-
-      // if first
-      if (slot_check == slot_start) {
+     // 255 should be last tag
+    if (tag == QUQU_MAX) {
+      if (((equalLocations >> (slot_end - 1)) & 1 ) == 1) {
         return true;
       }
-
-      // if last
-      else if (slot_check == slot_end - 1) {
-        return true;
-      }
-
-      // not first, nor last
       else {
-      // the escape sequence
-        if (blocks[index].tags[slot_check - 1 - QUQU_PRESLOT] > tag) {
-          // counter
+        return false;
+      }
+    }
+
+    // 0 should be first tag
+    else if (tag == 0) {
+      if (((equalLocations >> slot_start) & 1 ) == 1) {
+        return true;
+      }
+      else {
+        return false;
+      }
+    }
+
+    // other tags
+    else {
+      // filter->blocks[index].tags[slot_check - 16];
+      while (equalLocations != 0) {
+        // only check necessaries
+        slot_check = _tzcnt_u64(equalLocations);
+
+        // if first
+        if (slot_check == slot_start) {
+          return true;
         }
 
-        // [... 0, tag ...]
-        else if (blocks[index].tags[slot_check - 1 - QUQU_PRESLOT] == 0) {
+        // if last
+        else if (slot_check == slot_end - 1) {
+          return true;
+        }
 
-          // [0, tag ...]
-          if (slot_check == slot_start + 1) {
-            if (slot_check < slot_end - 2) {
-              // [0, tag, 0, 0 ...]
-              if (blocks[index].tags[slot_check + 1 - QUQU_PRESLOT] == 0 && blocks[index].tags[slot_check + 2 - QUQU_PRESLOT] == 0) {
-                // counter
+        // not first, nor last
+        else {
+        // the escape sequence
+          if (blocks[index].tags[slot_check - 1 - QUQU_PRESLOT] > tag) {
+            // counter
+          }
+
+          // [... 0, tag ...]
+          else if (blocks[index].tags[slot_check - 1 - QUQU_PRESLOT] == 0) {
+
+            // [0, tag ...]
+            if (slot_check == slot_start + 1) {
+              if (slot_check < slot_end - 2) {
+                // [0, tag, 0, 0 ...]
+                if (blocks[index].tags[slot_check + 1 - QUQU_PRESLOT] == 0 && blocks[index].tags[slot_check + 2 - QUQU_PRESLOT] == 0) {
+                  // counter
+                }
+
+                // not [0, tag, 0, 0 ...] sequence
+                else {
+                  return true;
+                }
               }
 
-              // not [0, tag, 0, 0 ...] sequence
+              // cannot even make the sequence
               else {
                 return true;
               }
             }
 
-            // cannot even make the sequence
+            // [... 0, tag ...]
             else {
-              return true;
+              // [ ... 0, 0, tag ...]
+              if (blocks[index].tags[slot_check - 2 - QUQU_PRESLOT] == 0) {
+                return true;
+              }
+              else {
+                // counter
+              }
             }
           }
 
-          // [... 0, tag ...]
+          // tag before is less than
+          else if (blocks[index].tags[slot_check - 1 - QUQU_PRESLOT] < tag) {
+            return true;
+          }
+
+          // tag before is equal to
           else {
-            // [ ... 0, 0, tag ...]
-            if (blocks[index].tags[slot_check - 2 - QUQU_PRESLOT] == 0) {
-              return true;
-            }
-            else {
-              // counter
-            }
           }
         }
-
-        // tag before is less than
-        else if (blocks[index].tags[slot_check - 1 - QUQU_PRESLOT] < tag) {
-          return true;
-        }
-
-        // tag before is equal to
-        else {
-        }
+        equalLocations &= ~(one[0] << slot_check);
       }
-      equalLocations &= ~(one[0] << slot_check);
     }
-  }
-    return false;
+      return false;
   }
 
   bool MayMatch(const Slice& entry) override {
