@@ -167,9 +167,6 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
 
   void CVQFBitsBuilder::AddKey(const Slice& key) {
     uint32_t hash = BloomHash(key);
-//    uint64_t hash64 = ((uint64_t)hash << 32) | (uint64_t)hash;
-//    uint64_t hash64 = (uint64_t) hash;
-//    printf("hash64: %lx", hash64);
 
     vqf_metadata* metadata = &filter->metadata;
     vqf_block* blocks = filter->blocks;
@@ -602,86 +599,6 @@ void CVQFBitsBuilder::PrintBlock(uint64_t block_index) {
   PrintTags(filter->blocks[block_index].tags, QUQU_SLOTS_PER_BLOCK);
 }
 
-uint32_t CVQFBitsBuilder::GetTotalBitsForLocality(uint32_t total_bits) {
-  uint32_t num_lines =
-      (total_bits + CACHE_LINE_SIZE * 8 - 1) / (CACHE_LINE_SIZE * 8);
-
-  // Make num_lines an odd number to make sure more bits are involved
-  // when determining which block.
-  if (num_lines % 2 == 0) {
-    num_lines++;
-  }
-  return num_lines * (CACHE_LINE_SIZE * 8);
-}
-
-uint32_t CVQFBitsBuilder::CalculateSpace(const int num_entry,
-                                               uint32_t* total_bits,
-                                               uint32_t* num_lines) {
-  assert(bits_per_key_);
-  if (num_entry != 0) {
-    uint32_t total_bits_tmp = num_entry * static_cast<uint32_t>(bits_per_key_);
-
-    *total_bits = GetTotalBitsForLocality(total_bits_tmp);
-    *num_lines = *total_bits / (CACHE_LINE_SIZE * 8);
-    assert(*total_bits > 0 && *total_bits % 8 == 0);
-  } else {
-    // filter is empty, just leave space for metadata
-    *total_bits = 0;
-    *num_lines = 0;
-  }
-
-  // Reserve space for Filter
-  uint32_t sz = *total_bits / 8;
-  sz += 5;  // 4 bytes for num_lines, 1 byte for num_probes
-  return sz;
-}
-
-char* CVQFBitsBuilder::ReserveSpace(const int num_entry,
-                                          uint32_t* total_bits,
-                                          uint32_t* num_lines) {
-  uint32_t sz = CalculateSpace(num_entry, total_bits, num_lines);
-  char* data = new char[sz];
-  memset(data, 0, sz);
-  return data;
-}
-
-int CVQFBitsBuilder::CalculateNumEntry(const uint32_t space) {
-  assert(bits_per_key_);
-  assert(space > 0);
-  uint32_t dont_care1, dont_care2;
-  int high = (int) (space * 8 / bits_per_key_ + 1);
-  int low = 1;
-  int n = high;
-  for (; n >= low; n--) {
-    uint32_t sz = CalculateSpace(n, &dont_care1, &dont_care2);
-    if (sz <= space) {
-      break;
-    }
-  }
-  assert(n < high);  // High should be an overestimation
-  return n;
-}
-
-inline void CVQFBitsBuilder::AddHash(uint32_t h, char* data,
-    uint32_t num_lines, uint32_t total_bits) {
-#ifdef NDEBUG
-  (void)total_bits;
-#endif
-  assert(num_lines > 0 && total_bits > 0);
-
-  const uint32_t delta = (h >> 17) | (h << 15);  // Rotate right 17 bits
-  uint32_t b = (h % num_lines) * (CACHE_LINE_SIZE * 8);
-
-  for (uint32_t i = 0; i < num_probes_; ++i) {
-    // Since CACHE_LINE_SIZE is defined as 2^n, this line will be optimized
-    // to a simple operation by compiler.
-    const uint32_t bitpos = b + (h % (CACHE_LINE_SIZE * 8));
-    data[bitpos / 8] |= (1 << (bitpos % 8));
-
-    h += delta;
-  }
-}
-
 inline uint64_t CVQFBitsBuilder::GetBlockFreeSpace(uint64_t *vector) {
   uint64_t lower_word = vector[0];
   uint64_t higher_word = vector[1];
@@ -695,7 +612,8 @@ class CVQFBitsReader : public FilterBitsReader {
   explicit CVQFBitsReader(const Slice& contents)
       : data_(const_cast<char*>(contents.data())) {
     filter_ = (vqf_filter *)data_;
-    printf("[CYDBG]BitsReader\ntags: ");
+    printf("[CYDBG]BitsReader\n");
+    printf("block index: 727\ntags: ");
     for (int i = 0;i < 48; i++)
       printf("%d ", filter_->blocks[727].tags[i]);
     printf("\n");
@@ -803,10 +721,6 @@ class CVQFPolicy : public FilterPolicy {
   FilterBitsReader* GetFilterBitsReader(const Slice& contents) const override {
     return new CVQFBitsReader(contents);
   }
-
-/*  FilterBitsReader* GetCVQFilterBitsReader(vqf_filter* filter) {
-    return new CVQFilterBitsReader(filter);
-  }*/
 
   // If choose to use block based builder
   bool UseBlockBasedBuilder() { return use_block_based_builder_; }

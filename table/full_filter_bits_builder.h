@@ -101,9 +101,6 @@ class CVQFBitsBuilder : public FilterBitsBuilder {
   virtual void AddKey(const Slice& key) override;
 
   virtual Slice Finish(std::unique_ptr<const char[]>* buf) override;
-  virtual int CalculateNumEntry(const uint32_t space) override;
-  uint32_t CalculateSpace(const int num_entry, uint32_t* total_bits,
-                          uint32_t* num_lines);
   void PrintBits(__uint128_t num, int numbits);
   void PrintTags(uint8_t *tags, uint32_t size);
   void PrintBlock(uint64_t block_index);
@@ -118,10 +115,6 @@ class CVQFBitsBuilder : public FilterBitsBuilder {
   size_t bits_per_key_;
   size_t num_probes_;
   std::vector<uint32_t> hash_entries_;
-  uint32_t GetTotalBitsForLocality(uint32_t total_bits);
-  char* ReserveSpace(const int num_entry, uint32_t* total_bits,
-                     uint32_t* num_lines);
-  void AddHash(uint32_t h, char* data, uint32_t num_lines, uint32_t total_bits);
 //  int word_rank(uint64_t val);
   uint64_t GetBlockFreeSpace(uint64_t *vector);
 
