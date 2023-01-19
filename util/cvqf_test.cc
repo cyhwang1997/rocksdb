@@ -208,13 +208,15 @@ class FullCVQFTest : public testing::Test {
   }
 
   void Build() {
-    vqf_filter* filter = dynamic_cast<CVQFBitsBuilder*>(bits_builder_.get())->GetFilter();
-    printf("filter->metadata.key_remainder_bits: %lu\n", filter->metadata.key_remainder_bits);
+//    vqf_filter* filter = dynamic_cast<CVQFBitsBuilder*>(bits_builder_.get())->GetFilter();
+    Slice filter = bits_builder_->Finish(&buf_);
 /*    printf("[CVQFTEST] tags: ");
     for (int i = 0; i < 48; i++)
       printf("%d ", filter->blocks[727].tags[i]);
     printf("\n");*/
-//    bits_reader_.reset(policy_->GetFilterBitsReader(filter));
+//    Slice s = Slice((std::string &)filter);
+//    printf("filter: %p, s: %p\n", filter, s.data());
+    bits_reader_.reset(policy_->GetFilterBitsReader(filter));
 //    filter_size_ = filter.size();
   }
 

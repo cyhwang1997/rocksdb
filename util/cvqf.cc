@@ -538,24 +538,10 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
   } //EndOf_AddKey
 
   Slice CVQFBitsBuilder::Finish(std::unique_ptr<const char[]>* buf) {
-    uint32_t total_bits, num_lines;
-    char* data = ReserveSpace(static_cast<int>(hash_entries_.size()),
-                              &total_bits, &num_lines);
-    assert(data);
-
-    if (total_bits != 0 && num_lines != 0) {
-      for (auto h : hash_entries_) {
-        AddHash(h, data, num_lines, total_bits);
-      }
-    }
-    data[total_bits/8] = static_cast<char>(num_probes_);
-    EncodeFixed32(data + total_bits/8 + 1, static_cast<uint32_t>(num_lines));
-
-    const char* const_data = data;
+    const char* const_data = (char *)filter;
     buf->reset(const_data);
-    hash_entries_.clear();
 
-    return Slice(data, total_bits / 8 + 5);
+    return Slice((std::string &)filter);
   }
 
 vqf_filter* CVQFBitsBuilder::GetFilter() {
@@ -707,129 +693,37 @@ namespace {
 class CVQFBitsReader : public FilterBitsReader {
  public:
   explicit CVQFBitsReader(const Slice& contents)
-      : data_(const_cast<char*>(contents.data())),
-        data_len_(static_cast<uint32_t>(contents.size())),
-        num_probes_(0),
-        num_lines_(0),
-        log2_cache_line_size_(0) {
+      : data_(const_cast<char*>(contents.data())) {
+    filter_ = (vqf_filter *)data_;
+    printf("[CYDBG]BitsReader\ntags: ");
+    for (int i = 0;i < 48; i++)
+      printf("%d ", filter_->blocks[727].tags[i]);
+    printf("\n");
+    
     assert(data_);
-    GetFilterMeta(contents, &num_probes_, &num_lines_);
-    // Sanitize broken parameter
-    if (num_lines_ != 0 && (data_len_-5) % num_lines_ != 0) {
-      num_lines_ = 0;
-      num_probes_ = 0;
-    } else if (num_lines_ != 0) {
-      while (true) {
-        uint32_t num_lines_at_curr_cache_size =
-            (data_len_ - 5) >> log2_cache_line_size_;
-        if (num_lines_at_curr_cache_size == 0) {
-          // The cache line size seems not a power of two. It's not supported
-          // and indicates a corruption so disable using this filter.
-          assert(false);
-          num_lines_ = 0;
-          num_probes_ = 0;
-          break;
-        }
-        if (num_lines_at_curr_cache_size == num_lines_) {
-          break;
-        }
-        ++log2_cache_line_size_;
-      }
-    }
   }
 
   ~CVQFBitsReader() override {}
 
   bool MayMatch(const Slice& entry) override {
-    if (data_len_ <= 5) {   // remain same with original filter
-      return false;
-    }
-    // Other Error params, including a broken filter, regarded as match
-    if (num_probes_ == 0 || num_lines_ == 0) return true;
     uint32_t hash = BloomHash(entry);
-    return HashMayMatch(hash, Slice(data_, data_len_),
-                        num_probes_, num_lines_);
+//    uint64_t hash64 = hash % range;/*Hash needs to be in range*/
+    /*CVQF*/
+    if (hash > 0)
+      return true;
+    return false;
+    /*CVQF*/
   }
 
  private:
   // Filter meta data
   char* data_;
-  uint32_t data_len_;
-  size_t num_probes_;
-  uint32_t num_lines_;
-  uint32_t log2_cache_line_size_;
-
-  // Get num_probes, and num_lines from filter
-  // If filter format broken, set both to 0.
-  void GetFilterMeta(const Slice& filter, size_t* num_probes,
-                             uint32_t* num_lines);
-
-  // "filter" contains the data appended by a preceding call to
-  // FilterBitsBuilder::Finish. This method must return true if the key was
-  // passed to FilterBitsBuilder::AddKey. This method may return true or false
-  // if the key was not on the list, but it should aim to return false with a
-  // high probability.
-  //
-  // hash: target to be checked
-  // filter: the whole filter, including meta data bytes
-  // num_probes: number of probes, read before hand
-  // num_lines: filter metadata, read before hand
-  // Before calling this function, need to ensure the input meta data
-  // is valid.
-  bool HashMayMatch(const uint32_t& hash, const Slice& filter,
-      const size_t& num_probes, const uint32_t& num_lines);
+  vqf_filter* filter_;
 
   // No Copy allowed
   CVQFBitsReader(const CVQFBitsReader&);
   void operator=(const CVQFBitsReader&);
 };
-
-void CVQFBitsReader::GetFilterMeta(const Slice& filter,
-    size_t* num_probes, uint32_t* num_lines) {
-  uint32_t len = static_cast<uint32_t>(filter.size());
-  if (len <= 5) {
-    // filter is empty or broken
-    *num_probes = 0;
-    *num_lines = 0;
-    return;
-  }
-
-  *num_probes = filter.data()[len - 5];
-  *num_lines = DecodeFixed32(filter.data() + len - 4);
-}
-
-bool CVQFBitsReader::HashMayMatch(const uint32_t& hash,
-    const Slice& filter, const size_t& num_probes,
-    const uint32_t& num_lines) {
-  uint32_t len = static_cast<uint32_t>(filter.size());
-  if (len <= 5) return false;  // remain the same with original filter
-
-  // It is ensured the params are valid before calling it
-  assert(num_probes != 0);
-  assert(num_lines != 0 && (len - 5) % num_lines == 0);
-  const char* data = filter.data();
-
-  uint32_t h = hash;
-  const uint32_t delta = (h >> 17) | (h << 15);  // Rotate right 17 bits
-  // Left shift by an extra 3 to convert bytes to bits
-  uint32_t b = (h % num_lines) << (log2_cache_line_size_ + 3);
-  PREFETCH(&data[b / 8], 0 /* rw */, 1 /* locality */);
-  PREFETCH(&data[b / 8 + (1 << log2_cache_line_size_) - 1], 0 /* rw */,
-           1 /* locality */);
-
-  for (uint32_t i = 0; i < num_probes; ++i) {
-    // Since CACHE_LINE_SIZE is defined as 2^n, this line will be optimized
-    //  to a simple and operation by compiler.
-    const uint32_t bitpos = b + (h & ((1 << (log2_cache_line_size_ + 3)) - 1));
-    if (((data[bitpos / 8]) & (1 << (bitpos % 8))) == 0) {
-      return false;
-    }
-
-    h += delta;
-  }
-
-  return true;
-}
 
 // An implementation of filter policy
 class CVQFPolicy : public FilterPolicy {
@@ -909,6 +803,10 @@ class CVQFPolicy : public FilterPolicy {
   FilterBitsReader* GetFilterBitsReader(const Slice& contents) const override {
     return new CVQFBitsReader(contents);
   }
+
+/*  FilterBitsReader* GetCVQFilterBitsReader(vqf_filter* filter) {
+    return new CVQFilterBitsReader(filter);
+  }*/
 
   // If choose to use block based builder
   bool UseBlockBasedBuilder() { return use_block_based_builder_; }
