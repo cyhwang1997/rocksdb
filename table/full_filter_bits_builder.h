@@ -104,6 +104,8 @@ class CVQFBitsBuilder : public FilterBitsBuilder {
   virtual int CalculateNumEntry(const uint32_t space) override;
   uint32_t CalculateSpace(const int num_entry, uint32_t* total_bits,
                           uint32_t* num_lines);
+  void PrintFilter();
+
   vqf_filter *filter;
 
  private:

@@ -47,6 +47,8 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
     filter->blocks[i].md[1] = filter->blocks[i].md[1] & ~(1ULL << 63);
   }
 
+  PrintFilter();
+
   }
 
   CVQFBitsBuilder::~CVQFBitsBuilder() {}
@@ -78,6 +80,33 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
 
     return Slice(data, total_bits / 8 + 5);
   }
+
+void CVQFBitsBuilder::PrintFilter() {
+  //print metadata
+  printf("vqf_metadata: \n \
+          total_size_in_bytes: %lu \n \
+          key_remainder_bits: %lu \n \
+          range: %lu \n \
+          nblocks: %lu \n \
+          nslots: %lu \n\n", \
+          filter->metadata.total_size_in_bytes, filter->metadata.key_remainder_bits,\
+          filter->metadata.range, filter->metadata.nblocks, filter->metadata.nslots);
+
+  //print block, md
+  for (uint64_t  i = 0; i < total_blocks; i++) {
+    printf("vqf_block: \n \
+            blocks[%lu].md[0]: %lx\n \
+            blocks[%lu].md[1]: %lx\n", i, filter->blocks[i].md[0], i, filter->blocks[i].md[1]);
+  }
+
+  //print bock, tag
+  printf("vqf_block: \n"); 
+  for (uint64_t  i = 0; i < total_blocks; i++) {
+    for (uint64_t j = 0; j < 48; j++) {
+      printf("            blocks[%lu].tags[%lu]: %u\n", i, j, filter->blocks[i].tags[j]);
+    }
+  }
+}
 
 uint32_t CVQFBitsBuilder::GetTotalBitsForLocality(uint32_t total_bits) {
   uint32_t num_lines =
