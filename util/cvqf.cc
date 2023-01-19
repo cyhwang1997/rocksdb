@@ -23,22 +23,137 @@ namespace rocksdb {
 class BlockBasedFilterBlockBuilder;
 class FullFilterBlockBuilder;
 
+#define TAG_MASK 0xff
+#define QUQU_SLOTS_PER_BLOCK 48
+#define QUQU_BUCKETS_PER_BLOCK 80
+#define QUQU_CHECK_ALT 92
+#define LOCK_MASK (1ULL << 63)
+#define QUQU_MAX 255
+#define QUQU_PRESLOT 16
+
+/*static inline void lock(vqf_block& block) {
+  uint64_t *data;
+  data = block.md + 1;
+  while ((__sync_fetch_and_or(data, LOCK_MASK) & (1ULL << 63)) != 0) {}
+}*/
+
+static uint64_t pre_one[64 + 128] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+   1ULL << 0, 1ULL << 1, 1ULL << 2, 1ULL << 3, 1ULL << 4, 1ULL << 5, 1ULL << 6, 1ULL << 7, 1ULL << 8, 1ULL << 9,
+   1ULL << 10, 1ULL << 11, 1ULL << 12, 1ULL << 13, 1ULL << 14, 1ULL << 15, 1ULL << 16, 1ULL << 17, 1ULL << 18, 1ULL << 19, 
+   1ULL << 20, 1ULL << 21, 1ULL << 22, 1ULL << 23, 1ULL << 24, 1ULL << 25, 1ULL << 26, 1ULL << 27, 1ULL << 28, 1ULL << 29, 
+   1ULL << 30, 1ULL << 31, 1ULL << 32, 1ULL << 33, 1ULL << 34, 1ULL << 35, 1ULL << 36, 1ULL << 37, 1ULL << 38, 1ULL << 39, 
+   1ULL << 40, 1ULL << 41, 1ULL << 42, 1ULL << 43, 1ULL << 44, 1ULL << 45, 1ULL << 46, 1ULL << 47, 1ULL << 48, 1ULL << 49, 
+   1ULL << 50, 1ULL << 51, 1ULL << 52, 1ULL << 53, 1ULL << 54, 1ULL << 55, 1ULL << 56, 1ULL << 57, 1ULL << 58, 1ULL << 59, 
+   1ULL << 60, 1ULL << 61, 1ULL << 62, 1ULL << 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+static uint64_t *one = pre_one + 64;
+
+const static uint64_t carry_pdep_table[128] {
+    1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL,
+    1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL,
+    1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 
+    1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL,
+    1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL,
+    1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL,
+    1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL,
+    1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL, 1ULL,
+    0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL,
+    0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL,
+    0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL,
+    0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL,
+    0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL,
+    0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL,
+    0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL,
+    0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL, 0ULL
+};
+
+const static uint64_t high_order_pdep_table[128] {
+    ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0),
+    ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0),
+    ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0),
+    ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0),
+    ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0),
+    ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0),
+    ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0),
+    ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0), ~(1ULL << 0),
+    ~(1ULL << 0), ~(1ULL << 1), ~(1ULL << 2), ~(1ULL << 3), ~(1ULL << 4), ~(1ULL << 5), ~(1ULL << 6), ~(1ULL << 7),
+    ~(1ULL << 8), ~(1ULL << 9), ~(1ULL << 10), ~(1ULL << 11), ~(1ULL << 12), ~(1ULL << 13), ~(1ULL << 14), ~(1ULL << 15),
+    ~(1ULL << 16), ~(1ULL << 17), ~(1ULL << 18), ~(1ULL << 19), ~(1ULL << 20), ~(1ULL << 21), ~(1ULL << 22), ~(1ULL << 23),
+    ~(1ULL << 24), ~(1ULL << 25), ~(1ULL << 26), ~(1ULL << 27), ~(1ULL << 28), ~(1ULL << 29), ~(1ULL << 30), ~(1ULL << 31),
+    ~(1ULL << 32), ~(1ULL << 33), ~(1ULL << 34), ~(1ULL << 35), ~(1ULL << 36), ~(1ULL << 37), ~(1ULL << 38), ~(1ULL << 39),
+    ~(1ULL << 40), ~(1ULL << 41), ~(1ULL << 42), ~(1ULL << 43), ~(1ULL << 44), ~(1ULL << 45), ~(1ULL << 46), ~(1ULL << 47),
+    ~(1ULL << 48), ~(1ULL << 49), ~(1ULL << 50), ~(1ULL << 51), ~(1ULL << 52), ~(1ULL << 53), ~(1ULL << 54), ~(1ULL << 55),
+    ~(1ULL << 56), ~(1ULL << 57), ~(1ULL << 58), ~(1ULL << 59), ~(1ULL << 60), ~(1ULL << 61), ~(1ULL << 62), ~(1ULL << 63)
+};
+
+const static uint64_t low_order_pdep_table[128] {
+    ~(1ULL << 0), ~(1ULL << 1), ~(1ULL << 2), ~(1ULL << 3), ~(1ULL << 4), ~(1ULL << 5), ~(1ULL << 6), ~(1ULL << 7),
+    ~(1ULL << 8), ~(1ULL << 9), ~(1ULL << 10), ~(1ULL << 11), ~(1ULL << 12), ~(1ULL << 13), ~(1ULL << 14), ~(1ULL << 15),
+    ~(1ULL << 16), ~(1ULL << 17), ~(1ULL << 18), ~(1ULL << 19), ~(1ULL << 20), ~(1ULL << 21), ~(1ULL << 22), ~(1ULL << 23),
+    ~(1ULL << 24), ~(1ULL << 25), ~(1ULL << 26), ~(1ULL << 27), ~(1ULL << 28), ~(1ULL << 29), ~(1ULL << 30), ~(1ULL << 31),
+    ~(1ULL << 32), ~(1ULL << 33), ~(1ULL << 34), ~(1ULL << 35), ~(1ULL << 36), ~(1ULL << 37), ~(1ULL << 38), ~(1ULL << 39),
+    ~(1ULL << 40), ~(1ULL << 41), ~(1ULL << 42), ~(1ULL << 43), ~(1ULL << 44), ~(1ULL << 45), ~(1ULL << 46), ~(1ULL << 47),
+    ~(1ULL << 48), ~(1ULL << 49), ~(1ULL << 50), ~(1ULL << 51), ~(1ULL << 52), ~(1ULL << 53), ~(1ULL << 54), ~(1ULL << 55),
+    ~(1ULL << 56), ~(1ULL << 57), ~(1ULL << 58), ~(1ULL << 59), ~(1ULL << 60), ~(1ULL << 61), ~(1ULL << 62), ~(1ULL << 63),
+    ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL,
+    ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL,
+    ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL,
+    ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL,
+    ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL,
+    ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL,
+    ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL,
+    ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL, ~0ULL
+};
+
+static inline void update_md(uint64_t *md, uint8_t index) {
+  uint64_t carry = (md[0] >> 63) & carry_pdep_table[index];
+  md[1] = _pdep_u64(md[1], high_order_pdep_table[index]) | carry;
+  md[0] = _pdep_u64(md[0], low_order_pdep_table[index]);
+}
+
+static inline void update_tags_512(vqf_block *block, uint8_t index, uint8_t tag) {
+  index -= 16;
+  memmove(&block->tags[index + 1], &block->tags[index], sizeof(block->tags) / sizeof(block->tags[0]) - index - 1);
+  block->tags[index] = tag;
+}
+
+static inline int word_rank(uint64_t val) {
+  return __builtin_popcountll(val);
+}
+
+static inline uint64_t lookup_128(uint64_t *vector, uint64_t rank) {
+   uint64_t lower_word = vector[0];
+   uint64_t lower_rank = word_rank(lower_word);
+   uint64_t lower_return = _pdep_u64(one[rank], lower_word) >> rank << sizeof(__uint128_t);
+   int64_t higher_rank = (int64_t)rank - lower_rank;
+   uint64_t higher_word = vector[1];
+   uint64_t higher_return = _pdep_u64(one[higher_rank], higher_word);
+   higher_return <<= (64 + sizeof(__uint128_t) - rank);
+   return lower_return + higher_return;
+}
+
+static inline int64_t select_128(uint64_t *vector, uint64_t rank) {
+   return _tzcnt_u64(lookup_128(vector, rank));
+}
+
+
+
 CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
                                  const size_t num_probes, const uint64_t nslots)
     : bits_per_key_(bits_per_key), num_probes_(num_probes), nslots_(1ULL << nslots){
 //  assert(bits_per_key_);
   assert(nslots_);
 
-  total_blocks = (nslots_ + 48)/48;
+  total_blocks = (nslots_ + QUQU_SLOTS_PER_BLOCK)/QUQU_SLOTS_PER_BLOCK;
   total_size_in_bytes = sizeof(vqf_block) * total_blocks;
 
   filter = (vqf_filter *)malloc(sizeof(*filter) + total_size_in_bytes);
   assert(filter);
 
   filter->metadata.total_size_in_bytes = total_size_in_bytes;
-  filter->metadata.nslots = total_blocks * 48;
+  filter->metadata.nslots = total_blocks * QUQU_SLOTS_PER_BLOCK;
   filter->metadata.key_remainder_bits = 8;
-  filter->metadata.range = total_blocks * 80 * (1ULL << filter->metadata.key_remainder_bits);
+  filter->metadata.range = total_blocks * QUQU_BUCKETS_PER_BLOCK * (1ULL << filter->metadata.key_remainder_bits);
   filter->metadata.nblocks = total_blocks;
 
   for (uint64_t  i = 0; i < total_blocks; i++) {
@@ -52,10 +167,375 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
 
   void CVQFBitsBuilder::AddKey(const Slice& key) {
     uint32_t hash = BloomHash(key);
-    if (hash_entries_.size() == 0 || hash != hash_entries_.back()) {
-      hash_entries_.push_back(hash);
+//    uint64_t hash64 = ((uint64_t)hash << 32) | (uint64_t)hash;
+//    uint64_t hash64 = (uint64_t) hash;
+//    printf("hash64: %lx", hash64);
+
+    vqf_metadata* metadata = &filter->metadata;
+    vqf_block* blocks = filter->blocks;
+    uint64_t key_remainder_bits = metadata->key_remainder_bits;
+    uint64_t range = metadata->range;
+
+    uint64_t hash64 = hash % range;/*Hash needs to be in range*/
+
+    uint64_t block_index = hash64 >> key_remainder_bits;
+
+    uint64_t *block_md = blocks[block_index/QUQU_BUCKETS_PER_BLOCK].md;
+    uint64_t block_free = GetBlockFreeSpace(block_md);
+    uint64_t tag = hash64 & TAG_MASK;
+    uint64_t alt_block_index = ((hash64 ^ (tag * 0x5bd1e995)) % range) >> key_remainder_bits;
+    __builtin_prefetch(&blocks[alt_block_index/QUQU_BUCKETS_PER_BLOCK]);
+
+    if (block_free < QUQU_CHECK_ALT && block_index/QUQU_BUCKETS_PER_BLOCK != alt_block_index/QUQU_BUCKETS_PER_BLOCK) {
+      uint64_t *alt_block_md = blocks[alt_block_index/QUQU_BUCKETS_PER_BLOCK].md;
+      uint64_t alt_block_free = GetBlockFreeSpace(alt_block_md);
+    
+      if (alt_block_free > block_free) {
+        block_index = alt_block_index;
+        block_md = alt_block_md;
+        block_free = alt_block_free;
+      } else if (block_free == QUQU_BUCKETS_PER_BLOCK) {
+        PrintBlock(block_index / QUQU_BUCKETS_PER_BLOCK);
+        PrintBlock(alt_block_index / QUQU_BUCKETS_PER_BLOCK);
+        fprintf(stderr, "vqf filter is full.\n");
+        //return false;
+        return ;
+      }
+
+    } else {
+      if (block_free == QUQU_BUCKETS_PER_BLOCK) {
+        PrintBlock(block_index / QUQU_BUCKETS_PER_BLOCK);
+        fprintf(stderr, "vqf filter is full, no alternative.\n");
+        return;
+      }
     }
-  }
+
+    uint64_t index = block_index / QUQU_BUCKETS_PER_BLOCK;
+    uint64_t offset = block_index % QUQU_BUCKETS_PER_BLOCK;
+
+    uint64_t slot_index = select_128(block_md, offset);
+    uint64_t select_index = slot_index + offset - sizeof(__uint128_t);
+
+    uint64_t preslot_index; // yongjin
+    if (offset != 0) {
+      preslot_index = select_128(block_md, offset - 1);
+    } else {
+      preslot_index = QUQU_PRESLOT;
+    }
+
+    uint64_t target_index;
+    uint64_t end_target_index;
+    uint8_t temp_tag;
+
+    if (preslot_index == slot_index) {
+      target_index = slot_index;
+      update_tags_512(&blocks[index], target_index, tag);
+      update_md(block_md, select_index);
+      PrintBlock(index);
+      return;
+    }
+
+    else {
+      target_index = slot_index;
+
+      // sorting //////////////////
+      uint64_t i;
+      for (i = preslot_index; i < slot_index; i++) {
+        // candidate
+        if (blocks[index].tags[i - QUQU_PRESLOT] >= tag) {
+          // the first tag, no need to think
+          if (i == preslot_index) {
+            target_index = i;
+            break;
+          }
+          // could be counter
+          else if (blocks[index].tags[i - 1 - QUQU_PRESLOT] == 0) {
+            // corner case, [0, counter], found
+            if (i == preslot_index + 1) {
+              target_index = i;
+              break;
+            }
+            // other cases
+            else {
+              temp_tag = blocks[index].tags[i - 2 - QUQU_PRESLOT];
+
+              // corner case, [0, 0, 255], found
+              if (temp_tag == 0) {
+                target_index = i;
+                break;
+              }
+
+              // counter (TAG_BIT = 8)
+              else {
+                while(blocks[index].tags[i - QUQU_PRESLOT] == QUQU_MAX) i++;
+                  if (blocks[index].tags[i - QUQU_PRESLOT] != temp_tag) i++;
+                  continue;
+              }
+            }
+          }
+
+          // found
+          else {
+            target_index = i;
+            break;
+          }
+        }
+      }
+    // sorting //////////////////
+    }
+
+    // if tag that is ">=" is found in [preslot_index ---------- slot_index)
+    if (target_index < slot_index) {
+
+      // need counter
+      if (blocks[index].tags[target_index - QUQU_PRESLOT] == tag) {
+        // just find the other tag in [preslot_index ---------- slot_index)
+        end_target_index = target_index + 1;
+        while (end_target_index < slot_index) {
+
+          // (if end_target_index == slot_index, there is no match)
+          if (blocks[index].tags[end_target_index - QUQU_PRESLOT] == tag) break;
+            end_target_index++;
+        }
+
+        // no extra match, just put it
+        if (end_target_index == slot_index) {
+          update_tags_512(&blocks[index], target_index, tag);
+          update_md(block_md, select_index);
+          PrintBlock(index);
+          return;
+        }
+
+        // counter //////////////////
+
+        // extra match, tag is 0
+        else if (tag == 0) {
+          // [0, 0, ...]
+          if (end_target_index == target_index + 1) {
+            // check if [0, 0, 0, ...]
+            if (end_target_index < slot_index - 1) {
+              if (blocks[index].tags[end_target_index + 1 - QUQU_PRESLOT] == tag) {
+               update_tags_512(&blocks[index], end_target_index, 1);
+               update_md(block_md, select_index);
+               PrintBlock(index);
+               return;
+              }
+              else {
+                update_tags_512(&blocks[index], end_target_index, tag);
+                update_md(block_md, select_index);
+                PrintBlock(index);
+                return;
+              }
+	          }
+            // [0, 0]
+            else {
+              update_tags_512(&blocks[index], target_index, tag);
+              update_md(block_md, select_index);
+              PrintBlock(index);
+              return;
+	          }
+          }
+
+          // check if counter, [0, ... 0, 0, ...]
+          else if (end_target_index < slot_index - 1) {
+            if (blocks[index].tags[end_target_index + 1 - QUQU_PRESLOT] == tag) {
+
+              // full counter
+              if (blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT] == QUQU_MAX) {
+                update_tags_512(&blocks[index], end_target_index, 1);
+                update_md(block_md, select_index);
+                PrintBlock(index);
+                return;
+              }
+
+              // increment counter
+              else {
+                blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT]++;
+                PrintBlock(index);
+                return;
+              }
+            }
+
+            else {
+              // wrong zero fetched
+              update_tags_512(&blocks[index], target_index, tag);
+              update_md(block_md, select_index);
+              PrintBlock(index);
+              return;
+            }
+          }
+
+          // wrong extra 0 fetched
+          else {
+            // [0 ... 0] ?
+            printf("[CYDBG] ERROR\n");
+            //update_tags_512(&blocks[index], target_index, tag);
+            //update_md(block_md, select_index);
+            return;
+          }
+        }
+
+        // extra match, tag is 1
+        else if (tag == 1) {
+
+          // [1, 1], need to insert two tags
+          if (end_target_index == target_index + 1) {
+
+            // cannot insert two tags
+            if (block_free == QUQU_BUCKETS_PER_BLOCK + 1) {
+              printf("[CYDBG] ERROR\n");
+              return;
+            }
+
+            // can insert two tags
+            else {
+              update_tags_512(&blocks[index], end_target_index, 0);
+              update_md(block_md, select_index);
+              update_tags_512(&blocks[index], end_target_index + 1, 2);
+              update_md(block_md, select_index);
+              PrintBlock(index);
+              return;
+            }
+          }
+
+          // counter
+          else if (blocks[index].tags[target_index + 1 - QUQU_PRESLOT] < tag) {
+
+            // add new counter
+            if (blocks[index].tags[end_target_index - 1  - QUQU_PRESLOT] == QUQU_MAX) {
+              update_tags_512(&blocks[index], end_target_index, 2);
+              update_md(block_md, select_index);
+              PrintBlock(index);
+              return;
+            }
+
+            // increment counter
+            else {
+              blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT]++;
+              PrintBlock(index);
+              return;
+            }
+          }
+
+          // wrong extra 1 fetched
+          else {
+            update_tags_512(&blocks[index], target_index, tag);
+            update_md(block_md, select_index);
+            PrintBlock(index);
+            return;
+          }
+        }
+
+        // extra match, tag is 255
+        else if (tag == QUQU_MAX) {
+          // [255, 255]
+          if (end_target_index == target_index + 1) {
+            update_tags_512(&blocks[index], end_target_index, 1);
+            update_md(block_md, select_index);
+            PrintBlock(index);
+            return;
+          }
+
+          // [255, ... , 255]
+          else {
+            // add new counter
+            if (blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT] == QUQU_MAX - 1) {
+              update_tags_512(&blocks[index], end_target_index, 1);
+              update_md(block_md, select_index);
+              PrintBlock(index);
+              return;
+            }
+
+            // increment counter
+            else {
+              blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT]++;
+              PrintBlock(index);
+              return;
+            }
+          }
+        }
+
+        // extra match, other tags
+        else {
+          // [tag, tag]
+          if (end_target_index == target_index + 1) {
+            update_tags_512(&blocks[index], end_target_index, 1);
+            update_md(block_md, select_index);
+            PrintBlock(index);
+            return;
+          }
+
+         // counter
+          else if (blocks[index].tags[target_index + 1 - QUQU_PRESLOT] < tag) {
+            // add new counter
+            if (blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT] == QUQU_MAX) {
+              update_tags_512(&blocks[index], end_target_index, 1);
+              update_md(block_md, select_index);
+              PrintBlock(index);
+              return;
+            }
+
+           // increment counter
+            else {
+              temp_tag = blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT] + 1;
+              if (temp_tag == tag) {
+                temp_tag++;
+
+                // need to put 0
+                if (blocks[index].tags[target_index + 1 - QUQU_PRESLOT] != 0) {
+                  blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT] = temp_tag;
+                  update_tags_512(&blocks[index], target_index + 1, 0);
+                  update_md(block_md, select_index);
+                  PrintBlock(index);
+                  return;
+                }
+
+                // no need to put 0
+                else {
+                  blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT] = temp_tag;
+                  PrintBlock(index);
+                  return;
+                }
+              } else {
+                blocks[index].tags[end_target_index - 1 - QUQU_PRESLOT] = temp_tag;
+                PrintBlock(index);
+                return ;
+              }
+            }
+          }
+
+          // wrong fetch
+          else {
+            update_tags_512(&blocks[index], target_index, tag);
+            update_md(block_md, select_index);
+            PrintBlock(index);
+            return;
+          }
+        }
+        // counter //////////////////
+      }
+
+      // no need counter
+      else {
+        update_tags_512(&blocks[index], target_index, tag);
+        update_md(block_md, select_index);
+        PrintBlock(index);
+        return;
+      }
+    }
+
+    // if not found in [preslot_index ---------- slot_index)
+    else {
+      update_tags_512(&blocks[index], target_index, tag); // slot_index
+      update_md(block_md, select_index);
+      PrintBlock(index);
+      return;
+    }
+
+    //something wrong
+    printf("[CYDBG] Error\n");
+    return;
+  } //EndOf_AddKey
 
   Slice CVQFBitsBuilder::Finish(std::unique_ptr<const char[]>* buf) {
     uint32_t total_bits, num_lines;
@@ -77,6 +557,10 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
 
     return Slice(data, total_bits / 8 + 5);
   }
+
+vqf_filter* CVQFBitsBuilder::GetFilter() {
+  return filter;
+}
 
 void CVQFBitsBuilder::PrintFilter() {
   //print metadata
@@ -103,6 +587,33 @@ void CVQFBitsBuilder::PrintFilter() {
       printf("            blocks[%lu].tags[%lu]: %u\n", i, j, filter->blocks[i].tags[j]);
     }
   }
+}
+
+void CVQFBitsBuilder::PrintBits(__uint128_t num, int numbits) {
+  int i;
+  for (i = 0; i < numbits; i++) {
+    if (i != 0 && i % 8 == 0) {
+      printf(":");
+    }
+    printf("%d", ((num >> i) & 1) == 1);
+  }
+  puts("");
+}
+
+
+void CVQFBitsBuilder::PrintTags(uint8_t *tags, uint32_t size) {
+  for (uint8_t i = 0; i < size; i++)
+    printf("%d ", (uint32_t)tags[i]);
+  printf("\n");
+}
+
+void CVQFBitsBuilder::PrintBlock(uint64_t block_index) {
+  printf("block index: %ld\n", block_index);
+  printf("metadata: ");
+  uint64_t *md = filter->blocks[block_index].md;
+  PrintBits(*(__uint128_t *)md, QUQU_BUCKETS_PER_BLOCK + QUQU_SLOTS_PER_BLOCK);
+  printf("tags: ");
+  PrintTags(filter->blocks[block_index].tags, QUQU_SLOTS_PER_BLOCK);
 }
 
 uint32_t CVQFBitsBuilder::GetTotalBitsForLocality(uint32_t total_bits) {
@@ -183,6 +694,12 @@ inline void CVQFBitsBuilder::AddHash(uint32_t h, char* data,
 
     h += delta;
   }
+}
+
+inline uint64_t CVQFBitsBuilder::GetBlockFreeSpace(uint64_t *vector) {
+  uint64_t lower_word = vector[0];
+  uint64_t higher_word = vector[1];
+  return word_rank(lower_word) + word_rank(higher_word);
 }
 
 

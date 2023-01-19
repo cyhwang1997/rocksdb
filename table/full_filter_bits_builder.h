@@ -104,7 +104,12 @@ class CVQFBitsBuilder : public FilterBitsBuilder {
   virtual int CalculateNumEntry(const uint32_t space) override;
   uint32_t CalculateSpace(const int num_entry, uint32_t* total_bits,
                           uint32_t* num_lines);
+  void PrintBits(__uint128_t num, int numbits);
+  void PrintTags(uint8_t *tags, uint32_t size);
+  void PrintBlock(uint64_t block_index);
   void PrintFilter();
+
+  vqf_filter* GetFilter();
 
   vqf_filter *filter;
 
@@ -117,6 +122,8 @@ class CVQFBitsBuilder : public FilterBitsBuilder {
   char* ReserveSpace(const int num_entry, uint32_t* total_bits,
                      uint32_t* num_lines);
   void AddHash(uint32_t h, char* data, uint32_t num_lines, uint32_t total_bits);
+//  int word_rank(uint64_t val);
+  uint64_t GetBlockFreeSpace(uint64_t *vector);
 
   CVQFBitsBuilder(const CVQFBitsBuilder&);
   void operator=(const CVQFBitsBuilder&);
@@ -126,6 +133,7 @@ class CVQFBitsBuilder : public FilterBitsBuilder {
   uint64_t total_size_in_bytes;
   uint64_t nslots_;
   //vqf_filter *filter;
+
 };
 
 /*CVQF*/

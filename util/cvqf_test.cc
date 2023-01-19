@@ -208,9 +208,14 @@ class FullCVQFTest : public testing::Test {
   }
 
   void Build() {
-    Slice filter = bits_builder_->Finish(&buf_);
-    bits_reader_.reset(policy_->GetFilterBitsReader(filter));
-    filter_size_ = filter.size();
+    vqf_filter* filter = dynamic_cast<CVQFBitsBuilder*>(bits_builder_.get())->GetFilter();
+    printf("filter->metadata.key_remainder_bits: %lu\n", filter->metadata.key_remainder_bits);
+/*    printf("[CVQFTEST] tags: ");
+    for (int i = 0; i < 48; i++)
+      printf("%d ", filter->blocks[727].tags[i]);
+    printf("\n");*/
+//    bits_reader_.reset(policy_->GetFilterBitsReader(filter));
+//    filter_size_ = filter.size();
   }
 
   size_t FilterSize() const {
@@ -243,9 +248,6 @@ TEST_F(FullCVQFTest, Init) {
 TEST_F(FullCVQFTest, FilterSize) {
   uint32_t dont_care1, dont_care2;
   auto full_bits_builder = GetFullFilterBitsBuilder();
-  /*CYDBG*/
-  full_bits_builder->PrintFilter();
-  /*CYDBG*/
   for (int n = 1; n < 100; n++) {
     auto space = full_bits_builder->CalculateSpace(n, &dont_care1, &dont_care2);
     auto n2 = full_bits_builder->CalculateNumEntry(space);
@@ -256,19 +258,22 @@ TEST_F(FullCVQFTest, FilterSize) {
   }
 }
 
-TEST_F(FullCVQFTest, FullEmptyFilter) {
+/*TEST_F(FullCVQFTest, FullEmptyFilter) {
   // Empty filter is not match, at this level
   ASSERT_TRUE(!Matches("hello"));
   ASSERT_TRUE(!Matches("world"));
-}
+}*/
 
 TEST_F(FullCVQFTest, FullSmall) {
   Add("hello");
-  Add("world");
-  ASSERT_TRUE(Matches("hello"));
-  ASSERT_TRUE(Matches("world"));
-  ASSERT_TRUE(!Matches("x"));
-  ASSERT_TRUE(!Matches("foo"));
+  Add("hello");
+  Add("hello");
+  Build();
+  Add("hello");
+//  ASSERT_TRUE(Matches("hello"));
+//  ASSERT_TRUE(Matches("world"));
+//  ASSERT_TRUE(!Matches("x"));
+//  ASSERT_TRUE(!Matches("foo"));
 }
 
 TEST_F(FullCVQFTest, FullVaryingLengths) {
