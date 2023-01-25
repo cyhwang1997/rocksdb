@@ -187,6 +187,7 @@ cpp_library(
         "table/flush_block_policy.cc",
         "table/format.cc",
         "table/full_filter_block.cc",
+        "table/cvqf_block.cc",
         "table/get_context.cc",
         "table/index_builder.cc",
         "table/iterator.cc",
@@ -533,6 +534,11 @@ ROCKS_TESTS = [
         "serial",
     ],
     [
+        "db_cvqf_test",
+        "db/db_cvqf_test.cc",
+        "serial",
+    ],
+    [
         "db_compaction_filter_test",
         "db/db_compaction_filter_test.cc",
         "parallel",
@@ -750,6 +756,11 @@ ROCKS_TESTS = [
     [
         "full_filter_block_test",
         "table/full_filter_block_test.cc",
+        "serial",
+    ],
+    [
+        "cvqf_block_test",
+        "table/cvqf_block_test.cc",
         "serial",
     ],
     [

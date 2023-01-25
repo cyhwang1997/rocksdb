@@ -71,6 +71,7 @@ class FullFilterBitsBuilder : public FilterBitsBuilder {
 
  private:
   friend class FullFilterBlockTest_DuplicateEntries_Test;
+  friend class CVQFBlockTest_DuplicateEntries_Test;/*[CYDBG] for cvqf_block_test*/
   size_t bits_per_key_;
   size_t num_probes_;
   std::vector<uint32_t> hash_entries_;

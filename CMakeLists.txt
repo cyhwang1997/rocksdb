@@ -573,6 +573,7 @@ set(SOURCES
         table/flush_block_policy.cc
         table/format.cc
         table/full_filter_block.cc
+        table/cvqf_block.cc
         table/get_context.cc
         table/index_builder.cc
         table/iterator.cc
@@ -860,6 +861,7 @@ if(WITH_TESTS)
         db/db_blob_index_test.cc
         db/db_block_cache_test.cc
         db/db_bloom_filter_test.cc
+        db/cvqf_test.cc
         db/db_compaction_filter_test.cc
         db/db_compaction_test.cc
         db/db_dynamic_level_test.cc
@@ -934,6 +936,7 @@ if(WITH_TESTS)
         table/cuckoo_table_reader_test.cc
         table/data_block_hash_index_test.cc
         table/full_filter_block_test.cc
+        table/cvqf_block_test.cc
         table/merger_test.cc
         table/sst_file_reader_test.cc
         table/table_test.cc

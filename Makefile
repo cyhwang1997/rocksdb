@@ -432,6 +432,7 @@ TESTS = \
 	db_test \
 	db_blob_index_test \
 	db_bloom_filter_test \
+  db_cvqf_test \
 	db_iter_test \
 	db_iter_stress_test \
 	db_log_iter_test \
@@ -472,6 +473,7 @@ TESTS = \
 	file_reader_writer_test \
 	block_based_filter_block_test \
 	full_filter_block_test \
+  cvqf_block_test \
 	partitioned_filter_block_test \
 	hash_table_test \
 	histogram_test \
@@ -1207,6 +1209,9 @@ db_block_cache_test: db/db_block_cache_test.o db/db_test_util.o $(LIBOBJECTS) $(
 db_bloom_filter_test: db/db_bloom_filter_test.o db/db_test_util.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
+db_cvqf_test: db/db_cvqf_test.o db/db_test_util.o $(LIBOBJECTS) $(TESTHARNESS)
+	$(AM_LINK)
+
 db_log_iter_test: db/db_log_iter_test.o db/db_test_util.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
@@ -1375,6 +1380,9 @@ block_based_filter_block_test: table/block_based_filter_block_test.o $(LIBOBJECT
 	$(AM_LINK)
 
 full_filter_block_test: table/full_filter_block_test.o $(LIBOBJECTS) $(TESTHARNESS)
+	$(AM_LINK)
+
+cvqf_block_test: table/cvqf_block_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
 partitioned_filter_block_test: table/partitioned_filter_block_test.o $(LIBOBJECTS) $(TESTHARNESS)
