@@ -139,7 +139,7 @@ class CVQFBlockTest : public testing::Test {
   BlockBasedTableOptions table_options_;
 
   CVQFBlockTest() {
-    table_options_.filter_policy.reset(NewBloomFilterPolicy(10, false));
+    table_options_.filter_policy.reset(NewCVQFPolicy(10, false, 17));
   }
 
   ~CVQFBlockTest() override {}
@@ -162,7 +162,7 @@ TEST_F(CVQFBlockTest, DuplicateEntries) {
   {  // empty prefixes
     std::unique_ptr<const SliceTransform> prefix_extractor(
         NewFixedPrefixTransform(0));
-    auto bits_builder = dynamic_cast<FullFilterBitsBuilder*>(
+    auto bits_builder = dynamic_cast<CVQFBitsBuilder*>(
         table_options_.filter_policy->GetFilterBitsBuilder());
     const bool WHOLE_KEY = true;
     CVQFBlockBuilder builder(prefix_extractor.get(), WHOLE_KEY,
@@ -175,7 +175,7 @@ TEST_F(CVQFBlockTest, DuplicateEntries) {
   // mix of empty and non-empty
   std::unique_ptr<const SliceTransform> prefix_extractor(
       NewFixedPrefixTransform(7));
-  auto bits_builder = dynamic_cast<FullFilterBitsBuilder*>(
+  auto bits_builder = dynamic_cast<CVQFBitsBuilder*>(
       table_options_.filter_policy->GetFilterBitsBuilder());
   const bool WHOLE_KEY = true;
   CVQFBlockBuilder builder(prefix_extractor.get(), WHOLE_KEY,

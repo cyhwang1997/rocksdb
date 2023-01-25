@@ -167,6 +167,11 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
 
   void CVQFBitsBuilder::AddKey(const Slice& key) {
     uint32_t hash = BloomHash(key);
+    /*CYDBG cvqf_block_test*/
+    if (hash_entries_.size() == 0 || hash != hash_entries_.back()) {
+      hash_entries_.push_back(hash);
+    }
+    /*CYDBG*/
 
     vqf_metadata* metadata = &filter->metadata;
     vqf_block* blocks = filter->blocks;
@@ -535,6 +540,7 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
   } //EndOf_AddKey
 
   Slice CVQFBitsBuilder::Finish(std::unique_ptr<const char[]>* buf) {
+    hash_entries_.clear(); /*CYDBG cvqf_block_test*/
     const char* const_data = (char *)filter;
     buf->reset(const_data);
 
