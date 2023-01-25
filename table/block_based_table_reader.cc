@@ -43,6 +43,7 @@
 #include "table/persistent_cache_helper.h"
 #include "table/sst_file_writer_collectors.h"
 #include "table/two_level_iterator.h"
+#include "table/cvqf_block.h" /*CYDBG cvqf*/
 
 #include "monitoring/perf_context_imp.h"
 #include "util/coding.h"
@@ -1648,6 +1649,7 @@ FilterBlockReader* BlockBasedTable::ReadFilter(
       auto filter_bits_reader =
           rep->filter_policy->GetFilterBitsReader(block.data);
       assert(filter_bits_reader != nullptr);
+      /*CYDBG cvqf*/
       return new FullFilterBlockReader(
           rep->prefix_filtering ? prefix_extractor : nullptr,
           rep->whole_key_filtering, std::move(block), filter_bits_reader,

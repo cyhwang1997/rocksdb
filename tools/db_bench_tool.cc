@@ -2373,7 +2373,7 @@ class Benchmark {
       : cache_(NewCache(FLAGS_cache_size)),
         compressed_cache_(NewCache(FLAGS_compressed_cache_size)),
         filter_policy_(FLAGS_bloom_bits >= 0
-                           ? NewBloomFilterPolicy(FLAGS_bloom_bits,
+                           ? NewCVQFPolicy(FLAGS_bloom_bits,
                                                   FLAGS_use_block_based_filter)
                            : nullptr),
         prefix_extractor_(NewFixedPrefixTransform(FLAGS_prefix_size)),
@@ -3616,7 +3616,7 @@ void VerifyDBFromDB(std::string& truth_db_name) {
         table_options->block_cache = cache_;
       }
       if (FLAGS_bloom_bits >= 0) {
-        table_options->filter_policy.reset(NewBloomFilterPolicy(
+        table_options->filter_policy.reset(NewCVQFPolicy(
             FLAGS_bloom_bits, FLAGS_use_block_based_filter));
       }
     }

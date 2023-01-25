@@ -38,6 +38,7 @@
 #include "table/format.h"
 #include "table/full_filter_block.h"
 #include "table/table_builder.h"
+#include "table/cvqf_block.h"  /*CYDBG cvqf*/
 
 #include "util/coding.h"
 #include "util/compression.h"
@@ -91,7 +92,10 @@ FilterBlockBuilder* CreateFilterBlockBuilder(
           filter_bits_builder, table_opt.index_block_restart_interval,
           use_delta_encoding_for_index_values, p_index_builder, partition_size);
     } else {
-      return new FullFilterBlockBuilder(mopt.prefix_extractor.get(),
+/*      return new FullFilterBlockBuilder(mopt.prefix_extractor.get(),
+                                        table_opt.whole_key_filtering,
+                                        filter_bits_builder);*/
+      return new CVQFBlockBuilder(mopt.prefix_extractor.get(),
                                         table_opt.whole_key_filtering,
                                         filter_bits_builder);
     }
