@@ -267,8 +267,11 @@ TEST_F(FullCVQFTest, FilterSize) {
 }*/
 
 TEST_F(FullCVQFTest, FullSmall) {
+//  printf("[CYDBG] Add(\"hello\")\n");
   Add("hello");
+//  printf("[CYDBG] Add(\"hello\")\n");
   Add("hello");
+//  printf("[CYDBG] Add(\"hello\")\n");
   Add("hello");
   Add("world");
   Build();

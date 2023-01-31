@@ -178,7 +178,8 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
     uint64_t key_remainder_bits = metadata->key_remainder_bits;
     uint64_t range = metadata->range;
 
-    uint64_t hash64 = hash % range;/*Hash needs to be in range*/
+    uint64_t temp64 = (uint64_t) hash;
+    uint64_t hash64 = (temp64 | (temp64 << 32)) % range;/*Hash needs to be in range*/
 
     uint64_t block_index = hash64 >> key_remainder_bits;
 
@@ -585,8 +586,11 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
         index_num ++;
       }
     }
+//    printf("[CYDBF] CVQFBitsBuilder::Finish\n");
+//    PrintFilter();
+//    PrintBlock(1020);
 
-/*    int block_index = 727;
+/*    int block_index = 1020;
     printf("\n[CYDBG] data\n");
     printf("[CYDBG] filter->metadata[1]: ");
     for (int i = 64 * block_index + 55; i >= 40 + 64*block_index; i--) {
@@ -618,16 +622,16 @@ void CVQFBitsBuilder::InsertData64ToChar(char* data, int index, uint64_t input) 
 void CVQFBitsBuilder::PrintFilter() {
   //print metadata
   printf("vqf_metadata: \n \
-          total_size_in_bytes: %lu \n \
-          key_remainder_bits: %lu \n \
-          range: %lu \n \
-          nblocks: %lu \n \
-          nslots: %lu \n\n", \
+          total_size_in_bytes: %lx \n \
+          key_remainder_bits: %lx \n \
+          range: %lx \n \
+          nblocks: %lx \n \
+          nslots: %lx \n\n", \
           filter_->metadata.total_size_in_bytes, filter_->metadata.key_remainder_bits,\
           filter_->metadata.range, filter_->metadata.nblocks, filter_->metadata.nslots);
 
   //print block, md
-  for (uint64_t  i = 727; i < 728; i++) {//total_blocks; i++) {
+/*  for (uint64_t  i = 1020; i < 1021; i++) {//total_blocks; i++) {
     printf("vqf_block: \n \
             blocks[%lu].md[0]: %lx\n \
             blocks[%lu].md[1]: %lx\n", i, filter_->blocks[i].md[0], i, filter_->blocks[i].md[1]);
@@ -635,13 +639,13 @@ void CVQFBitsBuilder::PrintFilter() {
 
   //print block, tag
   printf("vqf_block: \n"); 
-  for (uint64_t  i = 727; i < 728; i++) {//total_blocks; i++) {
+  for (uint64_t  i = 1020; i < 1021; i++) {//total_blocks; i++) {
     printf("           blocks[%lu].tags: ", i);
     for (uint64_t j = 0; j < 48; j++) {
       printf("%x ", filter_->blocks[i].tags[j]);
     }
     printf("\n");
-  }
+  }*/
 }
 
 void CVQFBitsBuilder::PrintBits(__uint128_t num, int numbits) {
@@ -699,7 +703,7 @@ class CVQFBitsReader : public FilterBitsReader {
       filter_->metadata.nblocks |= (static_cast<uint64_t>(data_[i+24] & 0x000000ff) << (i*8));
       filter_->metadata.nslots |= (static_cast<uint64_t>(data_[i+32] & 0x000000ff) << (i*8));
     }
-/*    printf("[CYDBG] vqf_metadata: \n \
+/*    printf("[CYDBG] CVQFBitsReader\nvqf_metadata: \n \
             total_size_in_bytes: %lx \n \
             key_remainder_bits: %lx \n \
             range: %lx \n \
@@ -720,26 +724,9 @@ class CVQFBitsReader : public FilterBitsReader {
         filter_->blocks[j].tags[i] = (static_cast<uint64_t>(data_[j*64 + 56 + i] & 0x000000ff));
       }
     }
-/*    for (uint64_t  i = 727; i < 728; i++) {//total_blocks; i++) {
-      printf("[CYDBG] vqf_block: \n \
-              blocks[%lu].md[0]: %lx\n \
-              blocks[%lu].md[1]: %lx\n", i, filter_->blocks[i].md[0], i, filter_->blocks[i].md[1]);
-    }
-    printf("[CYDBG] vqf_block: \n"); 
-    for (uint64_t  i = 727; i < 728; i++) {//total_blocks; i++) {
-      printf("           blocks[%lu].tags: ", i);
-      for (uint64_t j = 0; j < 48; j++) {
-        printf("%x ", filter_->blocks[i].tags[j]);
-      }
-      printf("\n");
-    }*/
 
+//    PrintBlock(1020);
 
-/*    printf("[CYDBG]BitsReader\n");
-    printf("block index: 727\ntags: ");
-    for (int i = 0;i < 48; i++)
-      printf("%d ", filter_->blocks[727].tags[i]);
-    printf("\n");*/
   }
 
   ~CVQFBitsReader() override {}
@@ -871,7 +858,9 @@ class CVQFBitsReader : public FilterBitsReader {
     uint64_t key_remainder_bits = metadata->key_remainder_bits;
     uint64_t range = metadata->range;
 
-    uint64_t hash64 = hash % range;/*Hash needs to be in range*/
+    uint64_t temp64 = (uint64_t) hash;
+    uint64_t hash64 = (temp64 | (temp64 << 32)) % range;/*Hash needs to be in range*/
+//    uint64_t hash64 = hash % range;/*Hash needs to be in range*/
     uint64_t tag = hash64 & TAG_MASK;
     uint64_t block_index = hash64 >> key_remainder_bits;
     uint64_t alt_block_index = ((hash64 ^(tag * 0x5bd1e995)) % range) >> key_remainder_bits;
@@ -880,6 +869,33 @@ class CVQFBitsReader : public FilterBitsReader {
 
     return check_tags(filter_, tag, block_index) || check_tags(filter_, tag, alt_block_index);
     /*CVQF*/
+  }
+
+  /*PrintFunctions*/
+  void PrintBits(__uint128_t num, int numbits) {
+    int i;
+    for (i = 0; i < numbits; i++) {
+      if (i != 0 && i % 8 == 0) {
+        printf(":");
+      }
+      printf("%d", ((num >> i) & 1) == 1);
+    }
+    puts("");
+  }
+
+  void PrintTags(uint8_t *tags, uint32_t size) {
+    for (uint8_t i = 0; i < size; i++)
+      printf("%d ", (uint32_t)tags[i]);
+    printf("\n");
+  }
+
+  void PrintBlock(uint64_t block_index) {
+    printf("block index: %ld\n", block_index);
+    printf("metadata: ");
+    uint64_t *md = filter_->blocks[block_index].md;
+    PrintBits(*(__uint128_t *)md, QUQU_BUCKETS_PER_BLOCK + QUQU_SLOTS_PER_BLOCK);
+    printf("tags: ");
+    PrintTags(filter_->blocks[block_index].tags, QUQU_SLOTS_PER_BLOCK);
   }
 
  private:

@@ -860,10 +860,6 @@ void BlockBasedTableBuilder::WriteFilterBlock(
     while (ok() && s.IsIncomplete()) {
       Slice filter_content =
           rep_->filter_builder->Finish(filter_block_handle, &s);
-      /*CYDBG*/
-      vqf_filter *cy_filter = (vqf_filter *) filter_content.data();
-      printf("[CYDBG] tag bits: %lu\n", cy_filter->metadata.key_remainder_bits);
-      /*CYDBG*/
       assert(s.ok() || s.IsIncomplete());
       rep_->props.filter_size += filter_content.size();
       WriteRawBlock(filter_content, kNoCompression, &filter_block_handle);
