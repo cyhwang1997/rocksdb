@@ -1646,14 +1646,17 @@ FilterBlockReader* BlockBasedTable::ReadFilter(
           rep->ioptions.statistics);
 
     case Rep::FilterType::kFullFilter: {
-      auto filter_bits_reader =
+      return new CVQFBlockReader(
+          nullptr, true, block.data,
+          rep->filter_policy->GetFilterBitsReader(block.data), nullptr);
+      /*auto filter_bits_reader =
           rep->filter_policy->GetFilterBitsReader(block.data);
-      assert(filter_bits_reader != nullptr);
+      assert(filter_bits_reader != nullptr);*/
       /*CYDBG cvqf*/
-      return new FullFilterBlockReader(
+      /*return new FullFilterBlockReader(
           rep->prefix_filtering ? prefix_extractor : nullptr,
           rep->whole_key_filtering, std::move(block), filter_bits_reader,
-          rep->ioptions.statistics);
+          rep->ioptions.statistics);*/
     }
 
     default:

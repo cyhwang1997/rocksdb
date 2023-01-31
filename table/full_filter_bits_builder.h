@@ -109,7 +109,7 @@ class CVQFBitsBuilder : public FilterBitsBuilder {
 
   vqf_filter* GetFilter();
 
-  vqf_filter *filter;
+  vqf_filter *filter_;
 
  private:
   friend class CVQFBlockTest_DuplicateEntries_Test;/*[CYDBG] for cvqf_block_test*/
@@ -119,12 +119,13 @@ class CVQFBitsBuilder : public FilterBitsBuilder {
   std::vector<uint32_t> hash_entries_;
   /*Need to be removed*/
   uint64_t GetBlockFreeSpace(uint64_t *vector);
+  void InsertData64ToChar(char* data, int index, uint64_t input);
 
   CVQFBitsBuilder(const CVQFBitsBuilder&);
   void operator=(const CVQFBitsBuilder&);
 
-  uint64_t total_blocks;
-  uint64_t total_size_in_bytes;
+  uint16_t total_blocks;
+  uint32_t total_size_in_bytes;
   uint64_t nslots_;
   //vqf_filter *filter;
 

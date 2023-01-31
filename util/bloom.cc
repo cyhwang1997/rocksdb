@@ -15,6 +15,7 @@
 #include "table/full_filter_block.h"
 #include "util/coding.h"
 #include "util/hash.h"
+#include <iostream>
 
 namespace rocksdb {
 

@@ -159,8 +159,8 @@ TEST_F(BloomTest, VaryingLengths) {
     // Check false positive rate
     double rate = FalsePositiveRate();
     if (kVerbose >= 1) {
-      fprintf(stderr, "False positives: %5.2f%% @ length = %6d ; bytes = %6d\n",
-              rate*100.0, length, static_cast<int>(FilterSize()));
+/*      fprintf(stderr, "False positives: %5.2f%% @ length = %6d ; bytes = %6d\n",
+              rate*100.0, length, static_cast<int>(FilterSize()));*/
     }
     ASSERT_LE(rate, 0.02);   // Must not be over 2%
     if (rate > 0.0125) mediocre_filters++;  // Allowed, but not too often
@@ -289,8 +289,8 @@ TEST_F(FullBloomTest, FullVaryingLengths) {
     // Check false positive rate
     double rate = FalsePositiveRate();
     if (kVerbose >= 1) {
-      fprintf(stderr, "False positives: %5.2f%% @ length = %6d ; bytes = %6d\n",
-              rate*100.0, length, static_cast<int>(FilterSize()));
+/*      fprintf(stderr, "False positives: %5.2f%% @ length = %6d ; bytes = %6d\n",
+              rate*100.0, length, static_cast<int>(FilterSize()));*/
     }
     ASSERT_LE(rate, 0.02);   // Must not be over 2%
     if (rate > 0.0125)

@@ -1,5 +1,5 @@
 //  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under both the GPLv2 (found in the
+//  :his source code is licensed under both the GPLv2 (found in the
 //  COPYING file in the root directory) and Apache 2.0 License
 //  (found in the LICENSE.Apache file in the root directory).
 //
@@ -39,6 +39,7 @@
 #include "table/full_filter_block.h"
 #include "table/table_builder.h"
 #include "table/cvqf_block.h"  /*CYDBG cvqf*/
+#include "table/full_filter_bits_builder.h" /*CYDBG cvqf*/
 
 #include "util/coding.h"
 #include "util/compression.h"
@@ -859,6 +860,10 @@ void BlockBasedTableBuilder::WriteFilterBlock(
     while (ok() && s.IsIncomplete()) {
       Slice filter_content =
           rep_->filter_builder->Finish(filter_block_handle, &s);
+      /*CYDBG*/
+      vqf_filter *cy_filter = (vqf_filter *) filter_content.data();
+      printf("[CYDBG] tag bits: %lu\n", cy_filter->metadata.key_remainder_bits);
+      /*CYDBG*/
       assert(s.ok() || s.IsIncomplete());
       rep_->props.filter_size += filter_content.size();
       WriteRawBlock(filter_content, kNoCompression, &filter_block_handle);

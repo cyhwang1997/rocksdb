@@ -147,19 +147,19 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
   total_blocks = (nslots_ + QUQU_SLOTS_PER_BLOCK)/QUQU_SLOTS_PER_BLOCK;
   total_size_in_bytes = sizeof(vqf_block) * total_blocks;
 
-  filter = (vqf_filter *)malloc(sizeof(*filter) + total_size_in_bytes);
-  assert(filter);
+  filter_ = (vqf_filter *)malloc(sizeof(*filter_) + total_size_in_bytes);
+  assert(filter_);
 
-  filter->metadata.total_size_in_bytes = total_size_in_bytes;
-  filter->metadata.nslots = total_blocks * QUQU_SLOTS_PER_BLOCK;
-  filter->metadata.key_remainder_bits = 8;
-  filter->metadata.range = total_blocks * QUQU_BUCKETS_PER_BLOCK * (1ULL << filter->metadata.key_remainder_bits);
-  filter->metadata.nblocks = total_blocks;
+  filter_->metadata.total_size_in_bytes = total_size_in_bytes;
+  filter_->metadata.nslots = total_blocks * QUQU_SLOTS_PER_BLOCK;
+  filter_->metadata.key_remainder_bits = 8;
+  filter_->metadata.range = total_blocks * QUQU_BUCKETS_PER_BLOCK * (1ULL << filter_->metadata.key_remainder_bits);
+  filter_->metadata.nblocks = total_blocks;
 
   for (uint64_t  i = 0; i < total_blocks; i++) {
-    filter->blocks[i].md[0] = UINT64_MAX;
-    filter->blocks[i].md[1] = UINT64_MAX;
-    filter->blocks[i].md[1] = filter->blocks[i].md[1] & ~(1ULL << 63);
+    filter_->blocks[i].md[0] = UINT64_MAX;
+    filter_->blocks[i].md[1] = UINT64_MAX;
+    filter_->blocks[i].md[1] = filter_->blocks[i].md[1] & ~(1ULL << 63);
   }
   }
 
@@ -173,8 +173,8 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
     }
     /*CYDBG*/
 
-    vqf_metadata* metadata = &filter->metadata;
-    vqf_block* blocks = filter->blocks;
+    vqf_metadata* metadata = &filter_->metadata;
+    vqf_block* blocks = filter_->blocks;
     uint64_t key_remainder_bits = metadata->key_remainder_bits;
     uint64_t range = metadata->range;
 
@@ -541,14 +541,78 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
 
   Slice CVQFBitsBuilder::Finish(std::unique_ptr<const char[]>* buf) {
     hash_entries_.clear(); /*CYDBG cvqf_block_test*/
-    const char* const_data = (char *)filter;
+    const char* const_data = (char *)filter_;
     buf->reset(const_data);
 
-    return Slice((std::string &)filter);
+    /*CYDBG changing filter to Slice*/
+    size_t data_size = filter_->metadata.total_size_in_bytes + sizeof(vqf_metadata);
+    char* data = new char[data_size];
+    memset(data, 0, filter_->metadata.total_size_in_bytes);
+
+    /*CYDBG filter_->metadata stored in data*/
+    uint64_t index_num = 0;
+    InsertData64ToChar(data, index_num, filter_->metadata.total_size_in_bytes);
+    index_num += 8;
+    InsertData64ToChar(data, index_num, filter_->metadata.key_remainder_bits);
+    index_num += 8;
+    InsertData64ToChar(data, index_num, filter_->metadata.range);
+    index_num += 8;
+    InsertData64ToChar(data, index_num, filter_->metadata.nblocks);
+    index_num += 8;
+    InsertData64ToChar(data, index_num, filter_->metadata.nslots);
+    index_num += 8;
+
+/*    printf("[CYDBG] Recovered Data\n");
+    for (int i = 0; i < 5; i++) {
+      uint64_t recovered_data = static_cast<uint64_t>(data[i] & 0x000000ff);
+      printf("[CYDBG] recovered_data: %lx\n", recovered_data);
+    }*/
+
+/*    printf("[CYDBG] original data: %lx\n", filter_->metadata.total_size_in_bytes & 0x00000000000000ff);
+    data[0] = static_cast<char>((filter_->metadata.total_size_in_bytes >> 0) & 0x00000000000000ff);
+    uint64_t recovered_data = static_cast<uint64_t>(data[0] & 0x000000ff);
+    printf("[CYDBG] recovered_data: %lx\n", recovered_data);*/
+  
+    for (uint64_t j = 0; j < filter_->metadata.nblocks; j++) {
+      /*Insert vqf_block->md*/
+      for (int i = 0; i < 2; i++) {
+        InsertData64ToChar(data, index_num, filter_->blocks[j].md[i]);
+        index_num += 8;
+      }
+      /*Insert vqf_block->tag*/
+      for (int i = 0; i < 48; i++) {
+        data[index_num] = filter_->blocks[j].tags[i];
+        index_num ++;
+      }
+    }
+
+/*    int block_index = 727;
+    printf("\n[CYDBG] data\n");
+    printf("[CYDBG] filter->metadata[1]: ");
+    for (int i = 64 * block_index + 55; i >= 40 + 64*block_index; i--) {
+      printf("%x", (data[i] & 0x000000ff));
+      if (i == 64 * block_index + 48)
+        printf("\n[CYDBG] filter->metadata[0]: ");
+    } 
+    printf("\n[CYDBG] filter->tags: ");
+    for (int i = 64 * block_index + 56; i < 64 * (block_index + 1) + 40; i++) {
+    	printf("%x ", (data[i] & 0x000000ff));
+    }
+    printf("\n");*/
+
+
+//    return Slice((std::string &)filter);
+    return Slice(data, data_size);
   }
 
 vqf_filter* CVQFBitsBuilder::GetFilter() {
-  return filter;
+  return filter_;
+}
+
+void CVQFBitsBuilder::InsertData64ToChar(char* data, int index, uint64_t input) {
+  for (int i = index; i < index + 8; i++) {
+    data[i] = static_cast<char>((input >> (8*i)) & 0x00000000000000ff);
+  }
 }
 
 void CVQFBitsBuilder::PrintFilter() {
@@ -559,22 +623,24 @@ void CVQFBitsBuilder::PrintFilter() {
           range: %lu \n \
           nblocks: %lu \n \
           nslots: %lu \n\n", \
-          filter->metadata.total_size_in_bytes, filter->metadata.key_remainder_bits,\
-          filter->metadata.range, filter->metadata.nblocks, filter->metadata.nslots);
+          filter_->metadata.total_size_in_bytes, filter_->metadata.key_remainder_bits,\
+          filter_->metadata.range, filter_->metadata.nblocks, filter_->metadata.nslots);
 
   //print block, md
-  for (uint64_t  i = 0; i < 10; i++) {//total_blocks; i++) {
+  for (uint64_t  i = 727; i < 728; i++) {//total_blocks; i++) {
     printf("vqf_block: \n \
             blocks[%lu].md[0]: %lx\n \
-            blocks[%lu].md[1]: %lx\n", i, filter->blocks[i].md[0], i, filter->blocks[i].md[1]);
+            blocks[%lu].md[1]: %lx\n", i, filter_->blocks[i].md[0], i, filter_->blocks[i].md[1]);
   }
 
-  //print bock, tag
+  //print block, tag
   printf("vqf_block: \n"); 
-  for (uint64_t  i = 0; i < 10; i++) {//total_blocks; i++) {
+  for (uint64_t  i = 727; i < 728; i++) {//total_blocks; i++) {
+    printf("           blocks[%lu].tags: ", i);
     for (uint64_t j = 0; j < 48; j++) {
-      printf("            blocks[%lu].tags[%lu]: %u\n", i, j, filter->blocks[i].tags[j]);
+      printf("%x ", filter_->blocks[i].tags[j]);
     }
+    printf("\n");
   }
 }
 
@@ -599,10 +665,10 @@ void CVQFBitsBuilder::PrintTags(uint8_t *tags, uint32_t size) {
 void CVQFBitsBuilder::PrintBlock(uint64_t block_index) {
   printf("block index: %ld\n", block_index);
   printf("metadata: ");
-  uint64_t *md = filter->blocks[block_index].md;
+  uint64_t *md = filter_->blocks[block_index].md;
   PrintBits(*(__uint128_t *)md, QUQU_BUCKETS_PER_BLOCK + QUQU_SLOTS_PER_BLOCK);
   printf("tags: ");
-  PrintTags(filter->blocks[block_index].tags, QUQU_SLOTS_PER_BLOCK);
+  PrintTags(filter_->blocks[block_index].tags, QUQU_SLOTS_PER_BLOCK);
 }
 
 inline uint64_t CVQFBitsBuilder::GetBlockFreeSpace(uint64_t *vector) {
@@ -618,7 +684,57 @@ class CVQFBitsReader : public FilterBitsReader {
   explicit CVQFBitsReader(const Slice& contents)
       : data_(const_cast<char*>(contents.data())) {
     assert(data_);
-    filter_ = (vqf_filter *)data_;
+//    filter_ = (vqf_filter *)data_;
+    uint64_t nslots_ = 1ULL << 17;
+    uint64_t total_blocks = (nslots_ + QUQU_SLOTS_PER_BLOCK)/QUQU_SLOTS_PER_BLOCK;
+    uint64_t total_size_in_bytes = sizeof(vqf_block) * total_blocks;
+
+    filter_ = (vqf_filter *)calloc(sizeof(*filter_) + total_size_in_bytes, 1);
+
+    /*CYDBG Load vqf_metadata*/
+    for (int i = 0; i < 8; i++) {
+      filter_->metadata.total_size_in_bytes |= (static_cast<uint64_t>(data_[i] & 0x000000ff) << (i*8));
+      filter_->metadata.key_remainder_bits |= (static_cast<uint64_t>(data_[i+8] & 0x000000ff) << (i*8));
+      filter_->metadata.range |= (static_cast<uint64_t>(data_[i+16] & 0x000000ff) << (i*8));
+      filter_->metadata.nblocks |= (static_cast<uint64_t>(data_[i+24] & 0x000000ff) << (i*8));
+      filter_->metadata.nslots |= (static_cast<uint64_t>(data_[i+32] & 0x000000ff) << (i*8));
+    }
+/*    printf("[CYDBG] vqf_metadata: \n \
+            total_size_in_bytes: %lx \n \
+            key_remainder_bits: %lx \n \
+            range: %lx \n \
+            nblocks: %lx \n \
+            nslots: %lx \n\n", \
+            filter_->metadata.total_size_in_bytes, filter_->metadata.key_remainder_bits,\
+            filter_->metadata.range, filter_->metadata.nblocks, filter_->metadata.nslots);*/
+
+    /*CYDBG Load vqf_block*/
+    for (uint64_t j = 0; j < filter_->metadata.nblocks; j++) {
+      /*Insert vqf_block->md*/
+      for (int i = 0; i < 8; i++) {
+        filter_->blocks[j].md[0] |= (static_cast<uint64_t>(data_[j*64 + 40 +i] & 0x000000ff) << (i*8));
+        filter_->blocks[j].md[1] |= (static_cast<uint64_t>(data_[j*64 + 48 + i] & 0x000000ff) << (i*8));
+      }
+      /*Insert vqf_block->tags*/
+      for (int i = 0; i < 48; i++) {
+        filter_->blocks[j].tags[i] = (static_cast<uint64_t>(data_[j*64 + 56 + i] & 0x000000ff));
+      }
+    }
+/*    for (uint64_t  i = 727; i < 728; i++) {//total_blocks; i++) {
+      printf("[CYDBG] vqf_block: \n \
+              blocks[%lu].md[0]: %lx\n \
+              blocks[%lu].md[1]: %lx\n", i, filter_->blocks[i].md[0], i, filter_->blocks[i].md[1]);
+    }
+    printf("[CYDBG] vqf_block: \n"); 
+    for (uint64_t  i = 727; i < 728; i++) {//total_blocks; i++) {
+      printf("           blocks[%lu].tags: ", i);
+      for (uint64_t j = 0; j < 48; j++) {
+        printf("%x ", filter_->blocks[i].tags[j]);
+      }
+      printf("\n");
+    }*/
+
+
 /*    printf("[CYDBG]BitsReader\n");
     printf("block index: 727\ntags: ");
     for (int i = 0;i < 48; i++)
