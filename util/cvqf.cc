@@ -161,6 +161,8 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
     filter_->blocks[i].md[1] = UINT64_MAX;
     filter_->blocks[i].md[1] = filter_->blocks[i].md[1] & ~(1ULL << 63);
   }
+//  PrintFilter();
+//  printf("[CYDBG] CVQFBitsBuilder\n");
   }
 
   CVQFBitsBuilder::~CVQFBitsBuilder() {}
@@ -621,7 +623,7 @@ void CVQFBitsBuilder::InsertData64ToChar(char* data, int index, uint64_t input) 
 
 void CVQFBitsBuilder::PrintFilter() {
   //print metadata
-  printf("vqf_metadata: \n \
+  printf("cvqf_metadata: \n \
           total_size_in_bytes: %lx \n \
           key_remainder_bits: %lx \n \
           range: %lx \n \
@@ -866,8 +868,10 @@ class CVQFBitsReader : public FilterBitsReader {
     uint64_t alt_block_index = ((hash64 ^(tag * 0x5bd1e995)) % range) >> key_remainder_bits;
 
     __builtin_prefetch(&filter_->blocks[alt_block_index / QUQU_BUCKETS_PER_BLOCK]);
-
-    return check_tags(filter_, tag, block_index) || check_tags(filter_, tag, alt_block_index);
+ 
+    bool result =  check_tags(filter_, tag, block_index) || check_tags(filter_, tag, alt_block_index);
+//    printf("[CYDBG] result: %d\n", result);
+    return result;
     /*CVQF*/
   }
 

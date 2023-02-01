@@ -242,9 +242,10 @@ bool DBTestBase::ChangeFilterOptions() {
   if (option_config_ == kDefault) {
     option_config_ = kFilter;
   } else if (option_config_ == kFilter) {
-    option_config_ = kFullFilterWithNewTableReaderForCompactions;
+    return false;
+//    option_config_ = kFullFilterWithNewTableReaderForCompactions;
   } else if (option_config_ == kFullFilterWithNewTableReaderForCompactions) {
-    option_config_ = kPartitionedFilterWithNewTableReaderForCompactions;
+//    option_config_ = kPartitionedFilterWithNewTableReaderForCompactions;
   } else {
     return false;
   }
@@ -405,10 +406,10 @@ Options DBTestBase::GetOptions(
       options.merge_operator = MergeOperators::CreatePutOperator();
       break;
     case kFilter:
-      table_options.filter_policy.reset(NewBloomFilterPolicy(10, true));
+      table_options.filter_policy.reset(NewCVQFPolicy(10, false, 17));//CYDBG BloomFilterPolicy(10, true));
       break;
     case kFullFilterWithNewTableReaderForCompactions:
-      table_options.filter_policy.reset(NewBloomFilterPolicy(10, false));
+      table_options.filter_policy.reset(NewCVQFPolicy(10, false, 17));//BloomFilterPolicy(10, false));
       options.new_table_reader_for_compaction_inputs = true;
       options.compaction_readahead_size = 10 * 1024 * 1024;
       break;

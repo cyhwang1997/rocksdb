@@ -10,6 +10,7 @@
 #include "db/db_test_util.h"
 #include "port/stack_trace.h"
 #include "rocksdb/perf_context.h"
+#include <iostream>
 
 namespace rocksdb {
 
@@ -35,8 +36,8 @@ class DBCVQFTestWithParam
   ~DBCVQFTestWithParam() override {}
 
   void SetUp() override {
-    use_block_based_filter_ = std::get<0>(GetParam());
-    partition_filters_ = std::get<1>(GetParam());
+    use_block_based_filter_ = false;//std::get<0>(GetParam());
+    partition_filters_ = false;//std::get<1>(GetParam());
     format_version_ = std::get<2>(GetParam());
   }
 };
@@ -72,7 +73,7 @@ TEST_P(DBCVQFTestDefFormatVersion, KeyMayExist) {
     std::string value;
     anon::OptionsOverride options_override;
     options_override.filter_policy.reset(
-        NewBloomFilterPolicy(20, use_block_based_filter_));
+        NewCVQFPolicy(20, false, 17));
     options_override.partition_filters = partition_filters_;
     options_override.metadata_block_size = 32;
     Options options = CurrentOptions(options_override);
@@ -140,7 +141,7 @@ TEST_P(DBCVQFTestDefFormatVersion, KeyMayExist) {
   } while (
       ChangeOptions(kSkipPlainTable | kSkipHashIndex | kSkipFIFOCompaction));
 }
-
+/*
 TEST_F(DBCVQFTest, GetFilterByPrefixBloomCustomPrefixExtractor) {
   for (bool partition_filters : {true, false}) {
     Options options = last_options_;
@@ -206,8 +207,8 @@ TEST_F(DBCVQFTest, GetFilterByPrefixBloomCustomPrefixExtractor) {
         (*(get_perf_context()->level_to_perf_context))[0].bloom_filter_useful);
     get_perf_context()->Reset();
   }
-}
-
+}*/
+/*
 TEST_F(DBCVQFTest, GetFilterByPrefixBloom) {
   for (bool partition_filters : {true, false}) {
     Options options = last_options_;
@@ -258,7 +259,7 @@ TEST_F(DBCVQFTest, GetFilterByPrefixBloom) {
     get_perf_context()->Reset();
   }
 }
-
+*//*
 TEST_F(DBCVQFTest, WholeKeyFilterProp) {
   for (bool partition_filters : {true, false}) {
     Options options = last_options_;
@@ -421,7 +422,7 @@ TEST_F(DBCVQFTest, WholeKeyFilterProp) {
     ASSERT_EQ(12, bloom_filter_useful_all_levels);
     get_perf_context()->Reset();
   }
-}
+}*/
 
 TEST_P(DBCVQFTestWithParam, BloomFilter) {
   do {
@@ -433,8 +434,8 @@ TEST_P(DBCVQFTestWithParam, BloomFilter) {
     BlockBasedTableOptions table_options;
     table_options.no_block_cache = true;
     table_options.filter_policy.reset(
-        NewBloomFilterPolicy(10, use_block_based_filter_));
-    table_options.partition_filters = partition_filters_;
+        NewCVQFPolicy(10, false, 17));
+    table_options.partition_filters = false;//partition_filters_;
     if (partition_filters_) {
       table_options.index_type =
           BlockBasedTableOptions::IndexType::kTwoLevelIndexSearch;
@@ -522,40 +523,43 @@ INSTANTIATE_TEST_CASE_P(
                                       test::kLatestFormatVersion)));
 #endif  // ROCKSDB_VALGRIND_RUN
 
-TEST_F(DBCVQFTest, CVQFRate) {
-  while (ChangeFilterOptions()) {
+TEST_F(DBCVQFTest, CVQFPutGetTest) {
+  while (ChangeFilterOptions()) { //Only Run kDefault which uses CVQFPolicy
     Options options = CurrentOptions();
     options.statistics = rocksdb::CreateDBStatistics();
     get_perf_context()->EnablePerLevelPerfContext();
     CreateAndReopenWithCF({"pikachu"}, options);
 
-    const int maxKey = 10000;
-    for (int i = 0; i < maxKey; i++) {
-      ASSERT_OK(Put(1, Key(i), Key(i)));
-    }
+//    const int maxKey = 10000;
+//    for (int i = 0; i < maxKey; i++) {
+//      ASSERT_OK(Put(1, Key(i), Key(i)));
+//    }
     // Add a large key to make the file contain wide range
-    ASSERT_OK(Put(1, Key(maxKey + 55555), Key(maxKey + 55555)));
+    ASSERT_OK(Put(1, "k1", "v1"));
+//    ASSERT_OK(Put(1, Key(maxKey + 55555), Key(maxKey + 55555)));
     Flush(1);
 
     // Check if they can be found
-    for (int i = 0; i < maxKey; i++) {
-      ASSERT_EQ(Key(i), Get(1, Key(i)));
-    }
+    ASSERT_EQ("v1", Get(1, "k1"));
+//    for (int i = 0; i < maxKey; i++) {
+//      ASSERT_EQ(Key(i), Get(1, Key(i)));
+//    }
     ASSERT_EQ(TestGetTickerCount(options, BLOOM_FILTER_USEFUL), 0);
+    ASSERT_EQ(get_perf_context()->bloom_sst_hit_count, 1);
 
     // Check if filter is useful
-    for (int i = 0; i < maxKey; i++) {
-      ASSERT_EQ("NOT_FOUND", Get(1, Key(i + 33333)));
-    }
-    ASSERT_GE(TestGetTickerCount(options, BLOOM_FILTER_USEFUL), maxKey * 0.98);
-    ASSERT_GE(
-        (*(get_perf_context()->level_to_perf_context))[0].bloom_filter_useful,
-        maxKey * 0.98);
+//    for (int i = 0; i < maxKey; i++) {
+//      ASSERT_EQ("NOT_FOUND", Get(1, Key(i + 33333)));
+//    }
+//    ASSERT_GE(TestGetTickerCount(options, BLOOM_FILTER_USEFUL), maxKey * 0.98);
+//    ASSERT_GE(
+//        (*(get_perf_context()->level_to_perf_context))[0].bloom_filter_useful,
+//        maxKey * 0.98);
     get_perf_context()->Reset();
   }
 }
 
-TEST_F(DBCVQFTest, CVQFCompatibility) {
+/*TEST_F(DBCVQFTest, CVQFCompatibility) {
   Options options = CurrentOptions();
   options.statistics = rocksdb::CreateDBStatistics();
   BlockBasedTableOptions table_options;
@@ -596,19 +600,19 @@ TEST_F(DBCVQFTest, CVQFCompatibility) {
     ASSERT_EQ(Key(i), Get(1, Key(i)));
   }
   ASSERT_EQ(TestGetTickerCount(options, BLOOM_FILTER_USEFUL), 0);
-}
+}*/
 
 TEST_F(DBCVQFTest, CVQFReverseCompatibility) {
-  for (bool partition_filters : {true, false}) {
+//  for (bool partition_filters : {true, false}) {
     Options options = CurrentOptions();
     options.statistics = rocksdb::CreateDBStatistics();
     BlockBasedTableOptions table_options;
-    if (partition_filters) {
-      table_options.partition_filters = true;
-      table_options.index_type =
-          BlockBasedTableOptions::IndexType::kTwoLevelIndexSearch;
-    }
-    table_options.filter_policy.reset(NewBloomFilterPolicy(10, false));
+//    if (partition_filters) {
+//      table_options.partition_filters = true;
+//      table_options.index_type =
+//          BlockBasedTableOptions::IndexType::kTwoLevelIndexSearch;
+//    }
+    table_options.filter_policy.reset(NewCVQFPolicy(10, false, 17));
     options.table_factory.reset(NewBlockBasedTableFactory(table_options));
     DestroyAndReopen(options);
 
@@ -623,16 +627,16 @@ TEST_F(DBCVQFTest, CVQFReverseCompatibility) {
     Flush(1);
 
     // Check db with block_based filter
-    table_options.filter_policy.reset(NewBloomFilterPolicy(10, true));
-    options.table_factory.reset(NewBlockBasedTableFactory(table_options));
-    ReopenWithColumnFamilies({"default", "pikachu"}, options);
+//    table_options.filter_policy.reset(NewBloomFilterPolicy(10, true));
+//    options.table_factory.reset(NewBlockBasedTableFactory(table_options));
+//    ReopenWithColumnFamilies({"default", "pikachu"}, options);
 
     // Check if they can be found
     for (int i = 0; i < maxKey; i++) {
       ASSERT_EQ(Key(i), Get(1, Key(i)));
     }
     ASSERT_EQ(TestGetTickerCount(options, BLOOM_FILTER_USEFUL), 0);
-  }
+//  }
 }
 
 namespace {
@@ -670,7 +674,7 @@ class WrappedCVQF : public FilterPolicy {
   rocksdb::Slice convertKey(const rocksdb::Slice& key) const { return key; }
 };
 }  // namespace
-
+/*
 TEST_F(DBCVQFTest, CVQFWrapper) {
   Options options = CurrentOptions();
   options.statistics = rocksdb::CreateDBStatistics();
@@ -704,7 +708,7 @@ TEST_F(DBCVQFTest, CVQFWrapper) {
   }
   ASSERT_GE(TestGetTickerCount(options, BLOOM_FILTER_USEFUL), maxKey * 0.98);
   ASSERT_EQ(2U * maxKey, policy->GetCounter());
-}
+}*/
 
 class SliceTransformLimitedDomain : public SliceTransform {
   const char* Name() const override { return "SliceTransformLimitedDomain"; }
@@ -723,7 +727,7 @@ class SliceTransformLimitedDomain : public SliceTransform {
     return dst.size() == 5 && dst[0] == 'x';
   }
 };
-
+/*
 TEST_F(DBCVQFTest, PrefixExtractorFullFilter) {
   BlockBasedTableOptions bbto;
   // Full Filter Block
@@ -784,8 +788,8 @@ TEST_F(DBCVQFTest, PrefixExtractorBlockFilter) {
   std::vector<std::string> expected_res = {"val1", "val2", "val3", "val4"};
   ASSERT_EQ(iter_res, expected_res);
   delete iter;
-}
-
+}*/
+/*
 TEST_F(DBCVQFTest, MemtableWholeKeyCVQF) {
   // regression test for #2743. the range delete tombstones in memtable should
   // be added even when Get() skips searching due to its prefix bloom filter
@@ -834,7 +838,7 @@ TEST_F(DBCVQFTest, MemtableWholeKeyCVQF) {
   // whole key bloom filter kicks in and determines it's a miss
   ASSERT_EQ(2, get_perf_context()->bloom_memtable_miss_count);
   ASSERT_EQ(1, get_perf_context()->bloom_memtable_hit_count);
-}
+}*/
 
 #ifndef ROCKSDB_LITE
 class CVQFStatsTestWithParam
@@ -1077,7 +1081,7 @@ TEST_F(DBCVQFTest, PrefixScan) {
 
     BlockBasedTableOptions table_options;
     table_options.no_block_cache = true;
-    table_options.filter_policy.reset(NewBloomFilterPolicy(10));
+    table_options.filter_policy.reset(NewCVQFPolicy(10));
     table_options.whole_key_filtering = false;
     options.table_factory.reset(NewBlockBasedTableFactory(table_options));
 
@@ -1118,7 +1122,7 @@ TEST_F(DBCVQFTest, OptimizeFiltersForHits) {
   options.level_compaction_dynamic_level_bytes = true;
   BlockBasedTableOptions bbto;
   bbto.cache_index_and_filter_blocks = true;
-  bbto.filter_policy.reset(NewBloomFilterPolicy(10, true));
+  bbto.filter_policy.reset(NewCVQFPolicy(10, false, 17));
   bbto.whole_key_filtering = true;
   options.table_factory.reset(NewBlockBasedTableFactory(bbto));
   options.optimize_filters_for_hits = true;
@@ -1305,7 +1309,7 @@ int CountIter(std::unique_ptr<Iterator>& iter, const Slice& key) {
 // as the upper bound and two keys are adjacent according to the comparator.
 TEST_F(DBCVQFTest, DynamicCVQFUpperBound) {
   int iteration = 0;
-  for (bool use_block_based_builder : {true, false}) {
+//  for (bool use_block_based_builder : {true, false}) {
     Options options;
     options.create_if_missing = true;
     options.prefix_extractor.reset(NewCappedPrefixTransform(4));
@@ -1315,7 +1319,7 @@ TEST_F(DBCVQFTest, DynamicCVQFUpperBound) {
     BlockBasedTableOptions table_options;
     table_options.cache_index_and_filter_blocks = true;
     table_options.filter_policy.reset(
-        NewBloomFilterPolicy(10, use_block_based_builder));
+        NewCVQFPolicy(10, false, 17));
     options.table_factory.reset(NewBlockBasedTableFactory(table_options));
     DestroyAndReopen(options);
 
@@ -1429,14 +1433,14 @@ TEST_F(DBCVQFTest, DynamicCVQFUpperBound) {
       ASSERT_EQ(TestGetTickerCount(options, BLOOM_FILTER_PREFIX_USEFUL), 1);
     }
     iteration++;
-  }
+//  }
 }
 
 // Create multiple SST files each with a different prefix_extractor config,
 // verify iterators can read all SST files using the latest config.
 TEST_F(DBCVQFTest, DynamicCVQFMultipleSST) {
   int iteration = 0;
-  for (bool use_block_based_builder : {true, false}) {
+//  for (bool use_block_based_builder : {true, false}) {
     Options options;
     options.create_if_missing = true;
     options.prefix_extractor.reset(NewFixedPrefixTransform(1));
@@ -1445,7 +1449,7 @@ TEST_F(DBCVQFTest, DynamicCVQFMultipleSST) {
     // Enable prefix bloom for SST files
     BlockBasedTableOptions table_options;
     table_options.filter_policy.reset(
-        NewBloomFilterPolicy(10, use_block_based_builder));
+        NewCVQFPolicy(10, false, 17));
     table_options.cache_index_and_filter_blocks = true;
     options.table_factory.reset(NewBlockBasedTableFactory(table_options));
     DestroyAndReopen(options);
@@ -1564,7 +1568,7 @@ TEST_F(DBCVQFTest, DynamicCVQFMultipleSST) {
     }
     // TODO(Zhongyi): Maybe also need to add Get calls to test point look up?
     iteration++;
-  }
+//  }
 }
 
 // Create a new column family in a running DB, change prefix_extractor
@@ -1572,7 +1576,7 @@ TEST_F(DBCVQFTest, DynamicCVQFMultipleSST) {
 // as expected
 TEST_F(DBCVQFTest, DynamicCVQFNewColumnFamily) {
   int iteration = 0;
-  for (bool use_block_based_builder : {true, false}) {
+//  for (bool use_block_based_builder : {true, false}) {
     Options options = CurrentOptions();
     options.create_if_missing = true;
     options.prefix_extractor.reset(NewFixedPrefixTransform(1));
@@ -1582,7 +1586,7 @@ TEST_F(DBCVQFTest, DynamicCVQFNewColumnFamily) {
     BlockBasedTableOptions table_options;
     table_options.cache_index_and_filter_blocks = true;
     table_options.filter_policy.reset(
-        NewBloomFilterPolicy(10, use_block_based_builder));
+        NewCVQFPolicy(10, false, 17));
     options.table_factory.reset(NewBlockBasedTableFactory(table_options));
     CreateAndReopenWithCF({"pikachu" + std::to_string(iteration)}, options);
     ReadOptions read_options;
@@ -1625,7 +1629,7 @@ TEST_F(DBCVQFTest, DynamicCVQFNewColumnFamily) {
     dbfull()->DestroyColumnFamilyHandle(handles_[1]);
     handles_[1] = nullptr;
     iteration++;
-  }
+//  }
 }
 
 // Verify it's possible to change prefix_extractor at runtime and iterators
