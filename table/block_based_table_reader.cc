@@ -1647,8 +1647,8 @@ FilterBlockReader* BlockBasedTable::ReadFilter(
 
     case Rep::FilterType::kFullFilter: {
       return new CVQFBlockReader(
-          nullptr, true, block.data,
-          rep->filter_policy->GetFilterBitsReader(block.data), nullptr);
+          nullptr, true, std::move(block.data),
+          rep->filter_policy->GetFilterBitsReader(std::move(block.data)), nullptr);
       /*auto filter_bits_reader =
           rep->filter_policy->GetFilterBitsReader(block.data);
       assert(filter_bits_reader != nullptr);*/
