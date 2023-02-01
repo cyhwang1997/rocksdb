@@ -213,6 +213,25 @@ TEST_F(CVQFBlockTest, SingleChunk) {
   ASSERT_TRUE(!reader.KeyMayMatch("missing", nullptr));
   ASSERT_TRUE(!reader.KeyMayMatch("other", nullptr));
 }
+/*
+TEST_F(CVQFBlockTest, FlushAndRead) {
+  DB* db;
+  std::vector<ColumnFamilyHandle*> cfh;
+  std::vector<ColumnFamilyDescriptor> column_families;
+  column_families.push_back(ColumnFamilyDescriptor(
+    "cf", ColumnFamilyOptions()));
+  DBOptions db_options;
+  db_options.create_if_missing = true;
+  db_options.env = Env::Default();
+  std::string dbname = "/home/junhan/rocksdb_filter_test";
+
+  ASSERT_OK(DB::Open(db_options, dbname, column_families, &cfh, &db));
+  ASSERT_OK(db->Put(WriteOptions(), cfh[0], "key1", "value1"));
+  ASSERT_OK(db->Flush(FlushOptions(), cfh[0]));
+  ASSERT_OK(db->DropColumnFamily(cfh[0]));
+  ASSERT_OK(db->DestroyColumnFamilyHandle(cfh[0]));
+}*/
+
 
 }  // namespace rocksdb
 

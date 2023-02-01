@@ -203,6 +203,10 @@ class FullCVQFTest : public testing::Test {
     filter_size_ = 0;
   }
 
+  void Print(void) {
+    dynamic_cast<CVQFBitsBuilder*>(bits_builder_.get())->PrintFilter();
+  }
+
   void Add(const Slice& s) {
     bits_builder_->AddKey(s);
   }
@@ -268,14 +272,17 @@ TEST_F(FullCVQFTest, FilterSize) {
 
 TEST_F(FullCVQFTest, FullSmall) {
 //  printf("[CYDBG] Add(\"hello\")\n");
+  Print();
   Add("hello");
 //  printf("[CYDBG] Add(\"hello\")\n");
   Add("hello");
 //  printf("[CYDBG] Add(\"hello\")\n");
   Add("hello");
 //  printf("[CYDBG] Add(\"world\")\n");
+  Print();
   Add("world");
   Build();
+  Print();
 //  printf("[CYDBG] Add(\"hello\")\n");
   Add("hello");
   ASSERT_TRUE(Matches("hello"));
@@ -283,6 +290,26 @@ TEST_F(FullCVQFTest, FullSmall) {
   ASSERT_TRUE(!Matches("x"));
   ASSERT_TRUE(!Matches("foo"));
 }
+
+TEST_F(FullCVQFTest, Add100Keys) {
+//  printf("[CYDBG] Add(\"hello\")\n");
+  std::vector<std::string> keys;
+  for(size_t i=0; i<100; i++) {
+    keys.push_back("hello" + std::to_string(2*i)); 
+  }
+
+  for(size_t i=0; i<100; i++) {
+    Add(keys[i]);
+  }
+
+  Build();
+  Print();
+
+  for(size_t i=0; i<100; i++) {
+    ASSERT_TRUE(Matches("hello" +  std::to_string(2*i)));
+  }
+}
+
 
 /*TEST_F(FullCVQFTest, FullVaryingLengths) {
   char buffer[sizeof(int)];

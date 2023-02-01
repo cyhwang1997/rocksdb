@@ -107,6 +107,10 @@ class CVQFBitsBuilder : public FilterBitsBuilder {
   void PrintBlock(uint64_t block_index);
   void PrintFilter();
 
+  // JH
+  void BuildFilter();
+  void AddHash(uint32_t hash);
+
   vqf_filter* GetFilter();
 
   vqf_filter *filter_;

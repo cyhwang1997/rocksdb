@@ -140,10 +140,13 @@ static inline int64_t select_128(uint64_t *vector, uint64_t rank) {
 
 CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
                                  const size_t num_probes, const uint64_t nslots)
-    : bits_per_key_(bits_per_key), num_probes_(num_probes), nslots_(1ULL << nslots){
+    : bits_per_key_(bits_per_key), num_probes_(num_probes), nslots_(1ULL << nslots) {
 //  assert(bits_per_key_);
   assert(nslots_);
+  filter_ = nullptr;
+}
 
+void CVQFBitsBuilder::BuildFilter() {
   total_blocks = (nslots_ + QUQU_SLOTS_PER_BLOCK)/QUQU_SLOTS_PER_BLOCK;
   total_size_in_bytes = sizeof(vqf_block) * total_blocks;
 
@@ -161,11 +164,13 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
     filter_->blocks[i].md[1] = UINT64_MAX;
     filter_->blocks[i].md[1] = filter_->blocks[i].md[1] & ~(1ULL << 63);
   }
-//  PrintFilter();
+  //PrintFilter();
 //  printf("[CYDBG] CVQFBitsBuilder\n");
-  }
+}
 
-  CVQFBitsBuilder::~CVQFBitsBuilder() {}
+  CVQFBitsBuilder::~CVQFBitsBuilder() {
+    free(filter_);  
+  }
 
   void CVQFBitsBuilder::AddKey(const Slice& key) {
     uint32_t hash = BloomHash(key);
@@ -174,7 +179,9 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
       hash_entries_.push_back(hash);
     }
     /*CYDBG*/
+  } //EndOf_AddKey
 
+  void CVQFBitsBuilder::AddHash(uint32_t hash) {
     vqf_metadata* metadata = &filter_->metadata;
     vqf_block* blocks = filter_->blocks;
     uint64_t key_remainder_bits = metadata->key_remainder_bits;
@@ -540,10 +547,31 @@ CVQFBitsBuilder::CVQFBitsBuilder(const size_t bits_per_key,
     //something wrong
     printf("[CYDBG] Error\n");
     return;
-  } //EndOf_AddKey
+  } //EndOf_AddHash
 
   Slice CVQFBitsBuilder::Finish(std::unique_ptr<const char[]>* buf) {
-    hash_entries_.clear(); /*CYDBG cvqf_block_test*/
+    // [JH] We now dynamically allocate the size of CVQF
+    // based on the entries we added.
+    // Note that we only change the nslots_, except for QUQU_SLOTS_PER_BLOCK,
+    // and QUQU_BUCKETS_PER_BLOCK.
+    // The expected bits_per_key is from 10 to 20 bits.
+    size_t num_entries = hash_entries_.size();
+    assert(num_entries > 0);
+
+    // [JH] Step 0. Obtain nslots
+    nslots_ = 1;
+    while (nslots_ < num_entries) {
+      nslots_ *= 2; 
+    }
+    //nslots_ = 1ULL << 17;
+    // [JH] Step 1. Build cvqf filter
+    BuildFilter();
+    assert(filter_ != nullptr);
+    // [JH] Step 2. Add hash entries to the filter
+    for (auto hash: hash_entries_) {
+      AddHash(hash);
+    }
+    // [JH] Step 3. Encode the filter to Slice, and return
     const char* const_data = (char *)filter_;
     buf->reset(const_data);
 
@@ -622,6 +650,12 @@ void CVQFBitsBuilder::InsertData64ToChar(char* data, int index, uint64_t input) 
 }
 
 void CVQFBitsBuilder::PrintFilter() {
+  if (filter_ == nullptr) {
+    printf("Filter is not created yet, but the number of the items added is : %ld\n",
+           hash_entries_.size());
+    return;
+  }
+
   //print metadata
   printf("cvqf_metadata: \n \
           total_size_in_bytes: %lx \n \
@@ -633,7 +667,7 @@ void CVQFBitsBuilder::PrintFilter() {
           filter_->metadata.range, filter_->metadata.nblocks, filter_->metadata.nslots);
 
   //print block, md
-/*  for (uint64_t  i = 1020; i < 1021; i++) {//total_blocks; i++) {
+  for (uint64_t  i = 1020; i < 1021; i++) {//total_blocks; i++) {
     printf("vqf_block: \n \
             blocks[%lu].md[0]: %lx\n \
             blocks[%lu].md[1]: %lx\n", i, filter_->blocks[i].md[0], i, filter_->blocks[i].md[1]);
@@ -647,7 +681,7 @@ void CVQFBitsBuilder::PrintFilter() {
       printf("%x ", filter_->blocks[i].tags[j]);
     }
     printf("\n");
-  }*/
+  }
 }
 
 void CVQFBitsBuilder::PrintBits(__uint128_t num, int numbits) {
