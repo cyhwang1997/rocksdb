@@ -212,8 +212,8 @@ void CVQFBitsBuilder::BuildFilter() {
         block_md = alt_block_md;
         block_free = alt_block_free;
       } else if (block_free == QUQU_BUCKETS_PER_BLOCK) {
-        PrintBlock(block_index / QUQU_BUCKETS_PER_BLOCK);
-        PrintBlock(alt_block_index / QUQU_BUCKETS_PER_BLOCK);
+//        PrintBlock(block_index / QUQU_BUCKETS_PER_BLOCK);
+//        PrintBlock(alt_block_index / QUQU_BUCKETS_PER_BLOCK);
         fprintf(stderr, "vqf filter is full.\n");
         //return false;
         return ;
@@ -221,7 +221,7 @@ void CVQFBitsBuilder::BuildFilter() {
 
     } else {
       if (block_free == QUQU_BUCKETS_PER_BLOCK) {
-        PrintBlock(block_index / QUQU_BUCKETS_PER_BLOCK);
+//        PrintBlock(block_index / QUQU_BUCKETS_PER_BLOCK);
         fprintf(stderr, "vqf filter is full, no alternative.\n");
         return;
       }
@@ -438,7 +438,7 @@ void CVQFBitsBuilder::BuildFilter() {
           else {
             update_tags_512(&blocks[index], target_index, tag);
             update_md(block_md, select_index);
-            PrintBlock(index);
+//            PrintBlock(index);
             return;
           }
         }
@@ -565,9 +565,11 @@ void CVQFBitsBuilder::BuildFilter() {
 
     // [JH] Step 0. Obtain nslots
     nslots_ = 1;
-    while (nslots_ < num_entries) {
+/*    while (nslots_ < num_entries) {
       nslots_ *= 2; 
-    }
+    }*/
+    nslots_ = (uint64_t)(num_entries * 1.25);
+    printf("[CYDBG] nslots_: %lu\n", nslots_);
 //    nslots_ = 1ULL << 17;
     // [JH] Step 1. Build cvqf filter
     BuildFilter();
@@ -579,7 +581,7 @@ void CVQFBitsBuilder::BuildFilter() {
     // [JH] Step 3. Encode the filter to Slice, and return
     const char* const_data = (char *)filter_;
     buf->reset(const_data);
-    PrintFilter();  /*CYDBG*/
+//    PrintFilter();  /*CYDBG*/
 
     /*CYDBG changing filter to Slice*/
     size_t data_size = filter_->metadata.total_size_in_bytes + sizeof(vqf_metadata);
