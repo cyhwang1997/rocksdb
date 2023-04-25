@@ -24,6 +24,7 @@
 jlong Java_org_rocksdb_BloomFilter_createNewBloomFilter(
     JNIEnv* /*env*/, jclass /*jcls*/, jint bits_per_key,
     jboolean use_block_base_builder) {
+  /*CY NewCVQFPolicy*/
   auto* sptr_filter = new std::shared_ptr<const rocksdb::FilterPolicy>(
       rocksdb::NewCVQFPolicy(bits_per_key, use_block_base_builder, 17));
   return reinterpret_cast<jlong>(sptr_filter);

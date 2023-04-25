@@ -35,6 +35,9 @@ Status LoadOptionsFromFile(const std::string& file_name, Env* env,
         auto* loaded_bbt_opt =
             reinterpret_cast<BlockBasedTableOptions*>(tf->GetOptions());
         loaded_bbt_opt->block_cache = *cache;
+        /*CY in rocksdbjni-test0410.jar*/
+        loaded_bbt_opt->filter_policy.reset(NewCVQFPolicy(10, false)); 
+        /*CY*/
       }
     }
   }

@@ -504,7 +504,11 @@ public class BlockBasedTableConfig extends TableFormatConfig {
   @Deprecated
   public BlockBasedTableConfig setFilter(
       final Filter filter) {
-    return setFilterPolicy(filter);
+    /*CY*/
+    final Filter bloomFilter = new BloomFilter(20, false);
+    return setFilterPolicy(bloomFilter);
+    /*CY*/
+//    return setFilterPolicy(filter);
   }
 
   /**

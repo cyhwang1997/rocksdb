@@ -434,6 +434,10 @@ struct HistogramData {
   double median;
   double percentile95;
   double percentile99;
+  /*CY*/
+  double percentile999;
+  double percentile9999;
+  /*CY*/
   double average;
   double standard_deviation;
   // zero-initialize new members since old Statistics::histogramData()

@@ -424,7 +424,7 @@ TEST_F(DBCVQFTest, WholeKeyFilterProp) {
   }
 }*/
 
-TEST_P(DBCVQFTestWithParam, BloomFilter) {
+TEST_P(DBCVQFTestWithParam, CVQF) {
   do {
     Options options = CurrentOptions();
     env_->count_random_reads_ = true;
@@ -864,7 +864,7 @@ class CVQFStatsTestWithParam
             BlockBasedTableOptions::IndexType::kTwoLevelIndexSearch;
       }
       table_options.filter_policy.reset(
-          NewBloomFilterPolicy(10, use_block_based_builder_));
+          NewCVQFPolicy(10, use_block_based_builder_));
       options_.table_factory.reset(NewBlockBasedTableFactory(table_options));
     } else {
       assert(!partition_filters_);  // not supported in plain table
@@ -1646,7 +1646,7 @@ TEST_F(DBCVQFTest, DynamicCVQFOptions) {
     BlockBasedTableOptions table_options;
     table_options.cache_index_and_filter_blocks = true;
     table_options.filter_policy.reset(
-        NewBloomFilterPolicy(10, use_block_based_builder));
+        NewCVQFPolicy(10, use_block_based_builder));
     options.table_factory.reset(NewBlockBasedTableFactory(table_options));
     DestroyAndReopen(options);
 
